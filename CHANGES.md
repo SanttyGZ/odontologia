@@ -1,0 +1,506 @@
+# CHANGES — Secuencia de Implementación
+
+> Índice canónico de los changes del proyecto `odontologia` para la primera entrega local.
+> Fecha: 2026-11-19. Los changes se delimitan como unidades de trabajo revisables; su duración se estimará al especificarlos.
+> **Leer este archivo antes de proponer cualquier change con OpenSpec.**
+
+---
+
+## Cómo usar este documento
+
+1. Identificar un change pendiente cuyas dependencias estén terminadas. Las dependencias de este índice son de implementación; las decisiones pendientes indicadas también deben resolverse antes del comportamiento afectado.
+2. Leer los archivos de KB indicados y revisar sus estados. 01–07 están aprobados; 08–10 contienen PT y preguntas pendientes. Presentar las alternativas necesarias y registrar la decisión explícita sin convertir una propuesta en aprobación por inferencia.
+3. Crear la propuesta mediante el flujo OpenSpec disponible, usando el nombre kebab-case del change. Invocar `$sdd-orchestrator` solo por pedido explícito del usuario. El CLI administra el estado de artefactos; este índice no crea changes ni directorios dentro de `openspec/`. Especificar contratos, alcance, errores y verificación; obtener las aprobaciones de dominio antes de escribir su código.
+4. Implementar y verificar el alcance autorizado; archivar el change con el CLI cuando corresponda. Conservar evidencia de aceptación y pendientes. No declarar completa una historia porque se implementó solo su backend o porque SMTP aceptó un mensaje.
+5. Marcar la casilla de este índice solamente después de verificar y archivar. Actualizar las decisiones y referencias afectadas, sin alterar silenciosamente contratos consumidos por otro change.
+
+### Alcance y precedencia
+
+- Entrega: un consultorio, un odontólogo, una agenda, PostgreSQL local, frontend compilado servido por Spring Boot y emails reales a destinatarios habilitados para pruebas. Se utilizan pacientes ficticios y no se incorporan datos clínicos.
+- Stack aprobado: Java 21 Temurin, Spring Boot, Gradle Wrapper, React, TypeScript, Vite, CSS, PostgreSQL y Spring Mail/SMTP. Versiones exactas, acceso a datos, migraciones, protocolo concurrente y mecanismos de acceso permanecen sujetos a AT y PT.
+- **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
+- No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
+- La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
+- Todos los changes están pendientes. Generar o aprobar este roadmap no aprueba PT-01 a PT-06, no cierra PB y no autoriza código de seguridad.
+
+### Gobernanza aplicable
+
+Prevalece la tabla suministrada por el usuario sobre heurísticas de las skills. El nivel de cada change es el máximo de su alcance: **CRITICO** (CRITICAL), análisis sin código hasta aprobación humana explícita; **ALTO** (HIGH), propuesta y revisión antes de escribir configuración que afecte datos; **MEDIO** (MEDIUM), implementación autorizada con checkpoints y decisiones visibles; **BAJO** (LOW), autonomía con las comprobaciones pertinentes. Consumir un mecanismo de acceso ya aprobado no autoriza modificarlo: cualquier ampliación de seguridad vuelve a revisión CRITICAL. No se rebaja la gobernanza para cumplir el plazo.
+
+### Cobertura de la entrega
+
+Cada US tiene cuatro CA-US en el documento 06; la columna de cierre incluye la verificación de sus cuatro criterios en C-16, además de las comprobaciones locales del change.
+
+| Historia | Backend / capacidad | Interfaz | Flujo | Cierre |
+|---|---|---|---|---|
+| US-001 — Motivos | C-02, C-03, C-06, C-07 | C-12, C-13 | FL-02 | C-16 |
+| US-002 — Horario y pausas | C-02, C-03, C-06, C-07 | C-12, C-13 | FL-02 | C-16 |
+| US-003 — Bloqueos | C-02, C-03, C-06, C-07 | C-12, C-13 | FL-02 | C-16 |
+| US-004 — Disponibilidad | C-07 | C-13 | FL-03 | C-16 |
+| US-005 — Reserva | C-02, C-04, C-05, C-08 | C-13 | FL-04 | C-16 |
+| US-006 — Agenda interna | C-03, C-10 | C-12, C-15 | FL-01 | C-16 |
+| US-007 — Consulta por enlace | C-04, C-09 | C-14 | FL-05 | C-16 |
+| US-008 — Cancelación | C-04, C-05, C-09 | C-14 | FL-06 | C-16 |
+| US-009 — Reprogramación | C-04, C-05, C-07, C-09 | C-14 | FL-07 | C-16 |
+| US-010 — Confirmación y enlaces | C-04, C-05, C-08, C-11 | C-13, C-14 | FL-04, FL-08 | C-16 |
+| US-011 — Avisos de cambios | C-05, C-09, C-11 | C-14 | FL-06, FL-07, FL-08 | C-16 |
+| US-012 — Recordatorio | C-05, C-11 | C-14 para abrir el enlace | FL-08 | C-16 |
+
+| Criterio transversal | Responsables principales y evidencia esperada |
+|---|---|
+| CT-01 — Concurrencia | C-02, C-06, C-08 y C-09; C-16 comprueba colisión de intervalos y conservación del original ante fallo. |
+| CT-02 — Acceso limitado | C-03 y C-04 implementan controles tras aprobación; C-09/C-10 los consumen; C-16 comprueba llamadas directas sin permiso. |
+| CT-03 — Datos públicos limitados | C-04, C-07 y C-08; C-16 comprueba respuestas y que coincidencias de DNI/email no conceden acceso. |
+| CT-04 — Persistencia | C-02, C-04 y C-05; C-11 recupera según política; C-16 verifica FL-09 sin recrear ni sobrescribir datos. |
+| CT-05 — Entrega local | C-01 y C-16: artefacto con React servido por Spring Boot, PostgreSQL local, enlaces locales y recepción real de emails. |
+| CT-06 — Evidencia | Cada change registra sus comprobaciones; C-16 consolida 48 CA-US, siete CA-VIS, seis CT y nueve FL con resultados y pendientes. |
+
+| Criterio de visión | Changes que lo habilitan; todos se aceptan en C-16 |
+|---|---|
+| CA-VIS-01 — Configuración y disponibilidad | C-06, C-07, C-12, C-13 y C-15. |
+| CA-VIS-02 — Reserva y agenda | C-08, C-10, C-11, C-13 y C-15. |
+| CA-VIS-03 — Sin superposición concurrente | C-02, C-06, C-08 y C-09. |
+| CA-VIS-04 — Cancelar/reprogramar con aviso | C-04, C-05, C-09, C-11 y C-14. |
+| CA-VIS-05 — Impedir autogestión fuera de plazo | C-04, C-09 y C-14. |
+| CA-VIS-06 — Recepción de email y enlaces locales | C-04, C-05, C-11 y C-14. |
+| CA-VIS-07 — Persistencia después de reiniciar | C-02, C-04, C-05 y C-11, comprobados en FL-09. |
+
+### Decisiones que habilitan la implementación
+
+Las preguntas de las dos tablas siguientes se conservan abiertas salvo AT-11. El propietario y las alternativas se consultan en `knowledge-base/10_preguntas_abiertas.md`; el mapa indica dónde resolverlas, no sus respuestas.
+
+| Pendiente | Resolver antes de | Límite que debe quedar explícito |
+|---|---|---|
+| PB-01, PB-02, PB-03 | C-02 para zona/tiempo, C-06/C-07 y usos en C-08/C-09/C-11 | Extremos 24 h/30 días, calendario, zona, medianoche, franjas y paso; no inferir de la máquina ni imponer múltiplos. |
+| PB-04 | C-02 para esquema de pacientes y C-08 | Crear/reutilizar, validar y corregir; no añadir unicidad natural, fusión ni sobrescritura automática por DNI/email. |
+| PB-05 | C-06 y C-09 | Cambios con reservas y duración al reprogramar; no cancelar ni mover reservas silenciosamente. |
+| PB-06 | C-09 y C-14 para el contacto fuera de plazo | Definir contacto operativo; no incluir alta manual ni excepciones del odontólogo sin ampliar el alcance expresamente. |
+| PB-07 | C-04, C-09 y C-14 | Vigencia, invalidación, datos visibles y recuperación; sin cuenta ni verificación previa obligatoria del email. |
+| PB-08 | C-05, C-08 y C-09 | Repeticiones, resultados inciertos y cambios simultáneos; no inferir reactivación de cancelados. |
+| PB-09 | C-05 y C-11 | Confirmación y recordatorio al reservar exactamente a 24 horas. |
+| PB-10, PB-11 | C-04/C-05 para el contrato durable, C-08/C-09 para respuestas y C-11 para envío | Tolerancias, reintentos, eventos únicos, avisos obsoletos, envío en curso y SMTP incierto; persistencia no garantiza entrega exactamente una vez. |
+| PB-12 | Antes de datos reales | Conservación, corrección, eliminación y recuperación; no bloquea documentar ni demostrar con datos ficticios, no habilita borrado automático. |
+
+| Pendiente técnico | Changes afectados y condición |
+|---|---|
+| AT-01 / PT-05 | C-01 fija compatibilidad y versiones tras verificarlas en fuentes oficiales; C-16 verifica el empaquetado. |
+| AT-02 / PT-01 | C-01 revisa acceso a datos y migraciones; C-02 materializa el modelo y restricciones; C-04/C-05 añaden sus entidades. JDBC y JPA siguen como alternativas. |
+| AT-03 / PT-04 | C-03: diseño de acceso interno y aprobación de código CRITICAL separada. |
+| AT-04 / PT-04 | C-04: material de credencial y correo recuperable tras reiniciar; aprobación de código CRITICAL separada. |
+| AT-05 / PT-02 | C-02 concreta protocolo común de escritura; C-06/C-08/C-09 lo aplican y prueban. El bloqueo por agenda aún es una propuesta. |
+| AT-06 / PT-03 | C-05 y C-11: contrato de intención persistida y coordinación con cambios concurrentes; C-04 acuerda cómo reconstruir los enlaces. |
+| AT-07 / SU-03 | C-11: elegir y habilitar SMTP/remitente/destinatarios; verificar condiciones oficiales y recepción. No contratar ni solicitar secretos en el chat. |
+| AT-08 | C-01/C-02: URL, puertos, escucha y zona consistentes; C-04/C-11 construyen enlaces con ese contrato y C-16 lo verifica. |
+| AT-09 | Fuera de esta entrega ficticia; requisito previo a un piloto con datos reales. |
+| AT-10 / PT-06 | C-01 propone herramientas; C-08/C-09/C-11 prueban riesgos y C-16 conserva evidencia. No hay herramienta adicional seleccionada por este roadmap. |
+| AT-11 | Resuelto en su política: `off`, por instrucción del usuario del 2026-11-19. No se exige sistema visual ni mockups para C-12 a C-15. |
+
+---
+
+## Árbol de dependencias
+
+El árbol muestra la rama principal de cada change; `+` enumera sus otras dependencias directas. El cuadro posterior es la referencia exacta para programar el trabajo; no se usa la apariencia del árbol para omitir un prerequisito.
+
+```text
+C-01 foundation-setup
+└── C-02 core-models
+    ├── C-03 acceso-interno-odontologo
+    │   └── C-06 configuracion-disponibilidad-api (+ C-02)
+    │       ├── C-07 consulta-disponibilidad-api
+    │       │   └── C-08 reserva-confirmada-api (+ C-04, C-05)
+    │       │       ├── C-09 autogestion-turnos-api
+    │       │       │   ├── C-11 envio-email-recordatorios (+ C-05)
+    │       │       │   └── C-14 autogestion-paciente-web
+    │       │       ├── C-10 consulta-agenda-api (+ C-03)
+    │       │       │   └── C-15 agenda-odontologo-web (+ C-12)
+    │       │       └── C-13 reserva-paciente-web
+    │       └── C-12 acceso-configuracion-web (+ C-03)
+    └── C-04 credenciales-gestion-turno
+        └── C-05 intenciones-notificacion
+
+C-11 + C-12 + C-13 + C-14 + C-15
+└── C-16 entrega-local-verificacion
+```
+
+| Change | Dependencias directas |
+|---|---|
+| C-01 | Ninguna |
+| C-02 | C-01 |
+| C-03 | C-02 |
+| C-04 | C-02 |
+| C-05 | C-04 |
+| C-06 | C-02, C-03 |
+| C-07 | C-06 |
+| C-08 | C-04, C-05, C-07 |
+| C-09 | C-08 |
+| C-10 | C-03, C-08 |
+| C-11 | C-05, C-09 |
+| C-12 | C-03, C-06 |
+| C-13 | C-08 |
+| C-14 | C-09 |
+| C-15 | C-10, C-12 |
+| C-16 | C-11, C-12, C-13, C-14, C-15 |
+
+C-06/C-07 pueden desarrollarse mientras se implementa el contrato durable de C-04/C-05, pero ninguna reserva de C-08 se publica sin credencial e intención de aviso. C-09 consume la disponibilidad de C-07 y las capacidades de C-04/C-05 por la dependencia transitiva de C-08. C-10 no necesita esperar C-09: consulta estados/intervalos del modelo y después se verifica sobre cambios reales en C-16.
+
+### Paralelismo por fase
+
+Son posibilidades de trabajo, no ejecuciones autorizadas. Cada gate requiere completar sus prerequisitos y resolver las decisiones del change; las aprobaciones HIGH/CRITICAL siguen vigentes.
+
+```text
+GATE 0: proyecto documentado; infraestructura todavía pendiente
+  → C-01 foundation-setup                         [Agente A]
+
+GATE 1: C-01 ✓
+  → C-02 core-models                              [Agente A]
+
+GATE 2: C-02 ✓ — primer fork
+  → C-03 acceso-interno-odontologo                [Agente A]
+  → C-04 credenciales-gestion-turno               [Agente B]
+
+GATE 3: C-03 y C-04 ✓
+  → C-06 configuracion-disponibilidad-api         [Agente A]
+  → C-05 intenciones-notificacion                 [Agente B]
+
+GATE 4: C-06 ✓
+  → C-07 consulta-disponibilidad-api              [Agente A]
+  → C-12 acceso-configuracion-web                 [Agente C — C-03 ✓]
+  → C-05 si aún no terminó                        [Agente B — C-04 ✓]
+
+GATE 5: C-04, C-05 y C-07 ✓
+  → C-08 reserva-confirmada-api                   [Agente A]
+
+GATE 6: C-08 ✓ ← FORK
+  → C-09 autogestion-turnos-api                   [Agente A]
+  → C-10 consulta-agenda-api                      [Agente B — C-03 ✓]
+  → C-13 reserva-paciente-web                     [Agente C]
+
+GATE 7: C-09 y C-10 ✓ ← FORK
+  → C-11 envio-email-recordatorios               [Agente B — C-05 ✓]
+  → C-14 autogestion-paciente-web                 [Agente C]
+  → C-15 agenda-odontologo-web                    [Agente C — C-12 ✓; después de C-14 si está ocupado]
+
+GATE 8: C-11, C-12, C-13, C-14 y C-15 ✓
+  → C-16 entrega-local-verificacion              [Agente A; revisión de B y C]
+```
+
+Compartir el esquema y acordar contratos antes de bifurcar. C-03/C-04 deben coordinar archivos de seguridad y esquema; las migraciones de cada rama tienen identificadores únicos acordados, sin inventar aquí una convención numérica. Asignar propiedad de archivos y sincronizar cambios compartidos antes de integrar; paralelismo de capacidades no elimina conflictos de edición.
+
+### Camino crítico (9 changes — mínimo irreducible de precedencias)
+
+Con duración unitaria por change, una cadena máxima de dependencias hasta el cierre es:
+
+`C-01 → C-02 → C-03 → C-06 → C-07 → C-08 → C-09 → C-11 → C-16`.
+
+También tienen nueve nodos las variantes que pasan de C-09 a C-14, o de C-08 a C-10 y C-15, antes de C-16. Se llama crítico a la cadena **más larga** de precedencias; una cadena más corta por otra rama no acredita la entrega porque omite prerequisitos de los joins. Los **16 changes son necesarios** para el alcance descrito; C-03, C-04, todas las pantallas y el correo real siguen siendo obligatorios aunque no aparezcan en una cadena concreta. No hay refactor visual ni dashboard opcional agregado.
+
+Sin estimaciones de duración ni tiempos de revisión, este cálculo no es un compromiso de calendario. La capacidad de tres agentes agrega restricciones: en la propuesta siguiente hay diez pasos porque C-14 y C-15 comparten Agente C. El plazo real depende además de AP-03, decisiones PB/AT y habilitación de SMTP.
+
+### Plan óptimo con 3 agentes
+
+Propuesta de distribución por especialidad, sin afirmar optimalidad temporal antes de estimar. Cada celda se inicia después de completar el paso anterior y sus aprobaciones. No se lanzaron estos agentes ni se implementaron changes al generar el plan.
+
+| Paso | Agente A (Backend Core) | Agente B (Backend Aux) | Agente C (Frontend) |
+|---|---|---|---|
+| 1 | C-01 | — | — |
+| 2 | C-02 | — | — |
+| 3 | C-03 | C-04 | — |
+| 4 | C-06 | C-05 | — |
+| 5 | C-07 | — | C-12 |
+| 6 | C-08 | — | — |
+| 7 | C-09 | C-10 | C-13 |
+| 8 | — | C-11 | C-14 |
+| 9 | — | — | C-15 |
+| 10 | C-16 | Revisión de correo y reinicio en C-16 | Recorrido de navegador en C-16 |
+
+Un solo agente puede seguir el orden topológico del cuadro de dependencias; la tabla de tres agentes no es requisito del producto. No se necesitan cambios extra para llenar tiempos ociosos.
+
+---
+
+## FASE 1 — Entorno local y modelo persistente
+
+### [C-01] `foundation-setup`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Verificar y proponer versiones estables compatibles del stack aprobado, DSL de Gradle, acceso a datos, herramienta de migración y herramientas de prueba; cerrar AT-01 y el contrato inicial de AT-02/AT-08/AT-10 antes de generar configuración.
+  - Crear estructura backend/frontend, Gradle Wrapper y archivos de bloqueo; preparar compilación de Spring Boot y React/TypeScript/Vite sin incorporar bibliotecas de calendario o componentes por omisión.
+  - Preparar contrato de entorno local, conexión a base de prueba, proxy de desarrollo y plantilla sin secretos. Presentar para revisión URL, puertos, escucha y cualquier configuración que afecte datos antes de escribirla; no editar dotfiles ni instalar servicios globales.
+  - Verificar build y conexión a PostgreSQL local sin publicar endpoints de negocio ni cargar datos sobre una base existente. El empaquetado integrado definitivo se comprueba en C-16. No seleccionar una zona del consultorio a partir de la zona de la computadora.
+- **Dependencias**: ninguna.
+- **Governance**: ALTO — configuración de persistencia/entorno; propuesta revisable antes de escribir los archivos afectados. Este roadmap no es esa revisión.
+- **Leer antes**:
+  - `knowledge-base/01_vision_y_objetivos.md` §Entorno y restricciones.
+  - `knowledge-base/02_descripcion_general.md` §Stack tecnológico y §Ejecución local acordada.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Variables de entorno y §Compilación, ejecución y verificación.
+  - `knowledge-base/10_preguntas_abiertas.md` §Preguntas técnicas abiertas (AT-01, AT-02, AT-08, AT-10).
+
+### [C-02] `core-models`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Proponer esquema físico, migraciones versionadas e índices para Consultorio, Odontologo, Agenda, MotivoConsulta, FranjaSemanal, BloqueoAgenda, Paciente y Turno. Revisar PB-02/PB-04 y AT-02; las entidades de credencial y aviso se agregan en C-04/C-05.
+  - Materializar relaciones, configuración única, UUID, duración reservada y estados `CONFIRMADO`/`CANCELADO`. Definir reloj controlable y tratamiento de instantes, zona persistida e intervalos `[inicio, fin)` sin cerrar por inferencia PB-01/PB-03.
+  - Concretar y revisar AT-05/PT-02: protocolo compartido para todas las escrituras de disponibilidad, orden de lecturas/bloqueos, rollback y conflictos. No adoptar bloqueo por agenda o exclusión PostgreSQL sin registrar la decisión y sus pruebas.
+  - Preparar inicialización que respete registros existentes, con consultorio/perfil/agenda acordados y ejemplos ficticios optativos; sin contraseña ni enlace fijo. Verificar restricciones e inicialización repetida en PostgreSQL real, sin recrear datos al reiniciar.
+- **Dependencias**: C-01.
+- **Governance**: ALTO — esquema, migraciones e inicialización de datos sujetos a revisión; no incluye código de autenticación.
+- **Leer antes**:
+  - `knowledge-base/04_modelo_de_datos.md` §Tipos y convenciones, §Entidades, §Restricciones e integridad entre entidades y §Seed data inicial.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Consultorio y agenda (RN-CO) y §Dominio: Motivos y disponibilidad (RN-AG).
+  - `knowledge-base/08_arquitectura_propuesta.md` §Persistencia y transacciones.
+  - `knowledge-base/10_preguntas_abiertas.md` §Preguntas técnicas abiertas (AT-02, AT-05, AT-08).
+
+---
+
+## FASE 2 — Acceso e intenciones durables
+
+### [C-03] `acceso-interno-odontologo`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Analizar AT-03/PT-04 y presentar diseño de alta inicial, ingreso, recuperación, cierre, expiración y efecto del reinicio para el único odontólogo; sin registro público ni cuentas de pacientes.
+  - Después de aprobación explícita de código CRITICAL, implementar el mecanismo elegido, proteger familias `/api/odontologo/*` e integrar escrituras del navegador con la protección acordada. Las rutas concretas de acceso se especifican aquí; no se inventan como contrato aprobado en este índice.
+  - Si se elige sesión Spring Security, concretar persistencia, cookie y CSRF para el entorno local, sin desactivar controles globalmente ni crear credenciales fijas; sigue siendo una alternativa hasta la decisión.
+  - Comprobar llamadas directas sin acceso, cierre y expiración; dejar contrato de frontend para C-12 y de autorización para C-06/C-10. CT-02 y parte de FL-01; US-006 se completa con agenda e interfaz.
+- **Dependencias**: C-02.
+- **Governance**: CRITICO — análisis permitido; no escribir código de acceso sin aprobación humana explícita, separada de aprobar el roadmap o su diseño.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Rutas internas del odontólogo y §Condiciones de autorización.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Acceso y autorización (RN-AU).
+  - `knowledge-base/07_flujos_principales.md` §FL-01 — Acceder como odontólogo y consultar la agenda.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Autenticación del odontólogo — propuesta PT-04.
+  - `knowledge-base/10_preguntas_abiertas.md` §Preguntas técnicas abiertas (AT-03).
+
+### [C-04] `credenciales-gestion-turno`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Resolver PB-07/AT-04 mediante diseño revisable de credencial limitada a un turno, datos visibles, generación, transporte, almacenamiento, vigencia, invalidación y recuperación. Mantener reserva sin cuenta ni verificación previa de email.
+  - Acordar con AT-06/PT-03 cómo conservar el material necesario para construir enlaces en emails pendientes después de reiniciar, sin exponerlos en logs o respuestas públicas. No asumir que guardar solo un verificador permite reconstruir un enlace.
+  - Tras autorización explícita de código, materializar CredencialGestion y las capacidades de emisión/validación/invalidación que consumirán C-05/C-08/C-09. El contrato con notificaciones debe definirse antes de implementar C-05, incluyendo las partes aplicables de PB-10/PB-11.
+  - Comprobar credencial inválida/vencida, alcance a otro turno e imposibilidad de usar DNI/email/UUID como secreto. Definir transporte y tratamiento de enlaces también en el navegador para C-14. CT-02/CT-03; la consulta completa US-007 llega en C-09/C-14.
+- **Dependencias**: C-02.
+- **Governance**: CRITICO — diseño y aprobación explícita de código de enlaces; incluye su persistencia sensible.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Autogestión sin cuenta, con enlace privado.
+  - `knowledge-base/04_modelo_de_datos.md` §CredencialGestion.
+  - `knowledge-base/07_flujos_principales.md` §FL-05 — Abrir el enlace privado de autogestión.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Autogestión del paciente — propuesta PT-04.
+  - `knowledge-base/10_preguntas_abiertas.md` §Preguntas abiertas de negocio — priorizadas y §Preguntas técnicas abiertas (PB-07, AT-04, AT-06).
+
+### [C-05] `intenciones-notificacion`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Resolver el contrato de PB-08 a PB-11 y AT-06/PT-03 para identidad del evento, creación de avisos, destinatario/revisión persistidos, sustitución/anulación y coordinación posterior con el emisor. No decidir tolerancias o reintentos por valores de ejemplo.
+  - Añadir Notificacion y capacidades para preparar `CONFIRMACION`, `CAMBIO` y `RECORDATORIO` junto al cambio de turno, según el límite transaccional revisado; no introducir SMTP dentro de esa transacción.
+  - Incorporar al contrato el caso exacto de reserva a 24 horas y el material de enlaces acordado en C-04; exponer funciones que C-08/C-09 usarán sin duplicar decisiones. No agregar estados de turno por fallas de correo.
+  - Verificar rollback conjunto de cambio/intención y prevención de creación repetida del mismo evento; comprobar que el destinatario guardado no cambia al editar datos de otra entidad. Sin envío real en este change; la entrega se verifica en C-11/C-16.
+- **Dependencias**: C-04.
+- **Governance**: ALTO — migración/configuración persistente de avisos requiere revisión; lógica de comunicaciones con checkpoints. Material privado reutiliza exclusivamente el mecanismo aprobado de C-04.
+- **Leer antes**:
+  - `knowledge-base/04_modelo_de_datos.md` §Notificacion.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Comunicaciones (RN-NO).
+  - `knowledge-base/07_flujos_principales.md` §FL-08 — Enviar confirmaciones, cambios y recordatorios.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Comunicaciones y recordatorios — PT-03.
+  - `knowledge-base/10_preguntas_abiertas.md` §Preguntas abiertas de negocio — priorizadas y §Preguntas técnicas abiertas (PB-08 a PB-11, AT-06).
+
+---
+
+## FASE 3 — Configuración y consulta de disponibilidad
+
+### [C-06] `configuracion-disponibilidad-api`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Precisar PB-02/PB-03/PB-05 para franjas, duraciones y cambios con reservas; implementar US-001/US-002/US-003 en backend mediante las familias orientativas `GET, POST, PUT /api/odontologo/motivos`, `GET, PUT /api/odontologo/horario` y `GET, POST, DELETE /api/odontologo/bloqueos`.
+  - Validar nombres/duración, franjas `ATENCION`/`PAUSA` y bloqueos; aplicar autorización de C-03 y protocolo común de escritura de C-02. No incorporar borrado de motivos ni desplazamiento/cancelación automática de turnos.
+  - Preservar intervalos y duración reservada de turnos existentes; aplicar la política revisada de conflictos ante cambios simultáneos de disponibilidad y reserva.
+  - Verificar los casos de US-001 a US-003 que dependen de reservas mediante fixtures ficticios en PostgreSQL y concurrencia sincronizada; registrar qué criterios esperan interfaz y recorrido completo en C-16.
+- **Dependencias**: C-02, C-03.
+- **Governance**: MEDIO — reglas de negocio con checkpoints; no modifica controles de seguridad ni configuración de instalación.
+- **Leer antes**:
+  - `knowledge-base/04_modelo_de_datos.md` §MotivoConsulta, §FranjaSemanal y §BloqueoAgenda.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Motivos y disponibilidad (RN-AG).
+  - `knowledge-base/06_funcionalidades.md` §Épica 1: Configuración de disponibilidad.
+  - `knowledge-base/07_flujos_principales.md` §FL-02 — Configurar motivos, horario, pausas y bloqueos.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Control de concurrencia propuesto — PT-02.
+
+### [C-07] `consulta-disponibilidad-api`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Resolver PB-01/PB-02/PB-03 y precisar entradas/salidas de `GET /api/public/motivos` y `GET /api/public/disponibilidad` a partir del mapa orientativo de la KB.
+  - Implementar US-004 calculando el intervalo completo por duración, horario, pausas, bloqueos, ocupación confirmada, zona y ventana de 24 horas a 30 días; conservar intervalos contiguos permitidos y reloj controlable.
+  - Devolver únicamente opciones de reserva, sin datos de pacientes ni detalles de citas ocupadas; sin retención del horario. Seguir RN-AU-01 y revisar como CRITICAL cualquier control de seguridad nuevo que hiciera falta; C-07 no implementa el mecanismo de enlaces de C-04.
+  - Comprobar bordes temporales acordados, turnos parcialmente superpuestos, pausas/bloqueos y período vacío/error de consulta; usar fixtures de Turno para demostrar ocupación antes de C-08. La pantalla llega en C-13.
+- **Dependencias**: C-06.
+- **Governance**: MEDIO — cálculo de disponibilidad; ninguna nueva política de acceso queda aprobada por este alcance.
+- **Leer antes**:
+  - `knowledge-base/02_descripcion_general.md` §API REST propuesta.
+  - `knowledge-base/04_modelo_de_datos.md` §Tipos y convenciones y §Restricciones e integridad entre entidades.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Motivos y disponibilidad (RN-AG) y §Dominio: Reserva y confirmación (RN-RE).
+  - `knowledge-base/06_funcionalidades.md` §US-004 — Consultar horarios disponibles.
+  - `knowledge-base/07_flujos_principales.md` §FL-03 — Consultar motivos y disponibilidad.
+
+---
+
+## FASE 4 — Reserva, autogestión y comunicaciones
+
+### [C-08] `reserva-confirmada-api`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Resolver partes aplicables de PB-01/PB-02/PB-04/PB-08/PB-10; precisar `POST /api/public/turnos` con nombre, apellido, email, teléfono y DNI obligatorios, entradas/salidas y resultado de conflicto o solicitud incierta.
+  - Implementar US-005/FL-04: validar nuevamente motivo, referencias, tiempo y disponibilidad después de adquirir la coordinación de escritura; persistir paciente según política, Turno `CONFIRMADO`, duración reservada, credencial e intención de confirmación/recordatorio conforme a C-02/C-04/C-05.
+  - No sobrescribir ni divulgar registros por coincidir DNI/email, no exigir cuenta o verificación previa y no cancelar por inferencia ante falla SMTP. Consumir los mecanismos de seguridad aprobados sin modificarlos.
+  - Comprobar reservas simultáneas con intervalos iguales y parcialmente solapados mediante solicitudes sincronizadas contra PostgreSQL real: como máximo una confirmada, rollback sin turno parcial y resultado observable del perdedor. Incluir carrera con cambio de bloqueo/configuración y repetición según PB-08. CT-01/CT-03; email real US-010 se completa en C-11.
+- **Dependencias**: C-04, C-05, C-07.
+- **Governance**: MEDIO — transacción y reglas con checkpoints; las dependencias CRITICAL deben estar previamente aprobadas e implementadas.
+- **Leer antes**:
+  - `knowledge-base/04_modelo_de_datos.md` §Paciente, §Turno y §Restricciones e integridad entre entidades.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Pacientes y datos básicos (RN-PA) y §Dominio: Reserva y confirmación (RN-RE).
+  - `knowledge-base/06_funcionalidades.md` §US-005 — Reservar con confirmación automática y §US-010 — Recibir confirmación y enlaces por email.
+  - `knowledge-base/07_flujos_principales.md` §FL-04 — Reservar y originar la confirmación por email.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Persistencia y transacciones.
+
+### [C-09] `autogestion-turnos-api`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-05/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables.
+  - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
+  - Cancelar sin borrado físico; reprogramar conservando identificador y estado `CONFIRMADO`, con nuevo intervalo y revisión. Coordinar intención de aviso y recordatorio según C-05; el original debe conservarse ante cualquier rechazo o fallo del cambio.
+  - Verificar plazo, contacto fuera de plazo sin excepciones inventadas, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La protección de credenciales se reutiliza; cualquier cambio en su semántica vuelve a revisión CRITICAL. CT-01 y FL-05/FL-06/FL-07.
+- **Dependencias**: C-08.
+- **Governance**: MEDIO — estados y reglas con checkpoints; no autoriza cambiar generación/transporte/validación de enlaces de C-04.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Autogestión sin cuenta, con enlace privado y §Condiciones de autorización.
+  - `knowledge-base/04_modelo_de_datos.md` §Turno y §Restricciones e integridad entre entidades.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Cancelación (RN-CA) y §Dominio: Reprogramación (RN-RP).
+  - `knowledge-base/06_funcionalidades.md` §Épica 4: Autogestión del turno por enlace.
+  - `knowledge-base/07_flujos_principales.md` §FL-05 — Abrir el enlace privado de autogestión, §FL-06 — Cancelar por autogestión y §FL-07 — Reprogramar sin perder el turno original ante fallo.
+
+### [C-10] `consulta-agenda-api`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Precisar `GET /api/odontologo/agenda` y `GET /api/odontologo/turnos/{id}` para US-006: filtros día/semana en zona acordada, datos mínimos de turno y los cinco datos básicos del paciente.
+  - Consultar exclusivamente la agenda única usando el acceso previamente implementado en C-03; sin directorio público, historia clínica, edición de pacientes ni alta manual.
+  - Mostrar estados/intervalos persistidos y distinguir una consulta fallida de una agenda vacía. Probar períodos y zona, y llamada directa sin acceso conforme al contrato existente; la actualización tras C-09 se verifica con datos reales de prueba en C-16.
+- **Dependencias**: C-03, C-08.
+- **Governance**: BAJO — consulta acotada usando autorización existente; cualquier modificación de seguridad queda fuera y exige revisión CRITICAL.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Rutas internas del odontólogo.
+  - `knowledge-base/04_modelo_de_datos.md` §Paciente y §Turno.
+  - `knowledge-base/06_funcionalidades.md` §US-006 — Consultar agenda y datos básicos de turnos.
+  - `knowledge-base/07_flujos_principales.md` §FL-01 — Acceder como odontólogo y consultar la agenda.
+
+### [C-11] `envio-email-recordatorios`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Resolver AT-07: proponer proveedor/cuenta, remitente y destinatarios habilitados; verificar condiciones oficiales gratuitas al elegirlos. Revisar configuración SMTP, tiempos finitos y secretos aportados por canal local; no crear cuentas, contratar ni enviar desde esta fase de roadmap.
+  - Implementar US-010/US-011/US-012 y FL-08: componer confirmación con enlaces, cambio por cancelación, cambio por reprogramación y recordatorio 24 horas antes; emisor/tarea internos consumen intenciones durables y la política PB-09/PB-10/PB-11 acordada.
+  - Persistir intentos y resultados conocidos, diferenciando `ACEPTADA_SMTP` de recepción. Aplicar política de reinicio, vencidos, errores e incertidumbre tras aceptación SMTP antes de registrar resultado; sin prometer exactamente una entrega.
+  - Coordinar cambio de turno con envío en curso conforme al diseño AT-06; una lectura de revisión antes de SMTP no basta. Probar cancelación/reprogramación coincidente con emisión, avisos obsoletos, resultados inciertos y reserva exacta a 24 horas según política. No retener bloqueo de agenda durante SMTP sin decisión expresa.
+  - Con autorización de destinatarios y envío cuando se implemente, comprobar recepción real de cada uno de los cuatro casos y apertura local de enlaces; usar reloj controlado para recordatorio sin alterar la regla de producción. Registrar evidencia de FL-08/FL-09 y casos pendientes para C-16.
+- **Dependencias**: C-05, C-09.
+- **Governance**: ALTO — configuración SMTP/destinatarios y estado persistente bajo revisión; cualquier modificación del mecanismo de secretos o enlaces exige aprobación CRITICAL específica.
+- **Leer antes**:
+  - `knowledge-base/04_modelo_de_datos.md` §Notificacion.
+  - `knowledge-base/05_reglas_de_negocio.md` §Dominio: Comunicaciones (RN-NO).
+  - `knowledge-base/06_funcionalidades.md` §Épica 5: Comunicaciones por email.
+  - `knowledge-base/07_flujos_principales.md` §FL-08 — Enviar confirmaciones, cambios y recordatorios y §FL-09 — Retomar la operación local tras un reinicio.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Comunicaciones y recordatorios — PT-03.
+
+---
+
+## FASE 5 — Pantallas funcionales del MVP
+
+> Política visual `off`: estas pantallas se implementan sin sistema de diseño ni gate de mockups. Las comprobaciones funcionales, de accesibilidad básica y de errores en navegador siguen siendo parte de la verificación. No se crea una marca ni se añade una librería visual sin justificarla.
+
+### [C-12] `acceso-configuracion-web`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Implementar pantalla de ingreso/cierre conforme al contrato de C-03 y formularios de motivos, duraciones, horario semanal, pausas y bloqueos consumiendo C-06. Cubrir interfaz de US-001 a US-003 y la entrada a FL-01.
+  - Integrar manejo de sesión/CSRF según el mecanismo aprobado, sin nuevas políticas ni desactivación global de controles; revisar explícitamente el código de integración de acceso antes de escribirlo.
+  - Mostrar validaciones, conflictos con turnos, carga, fallo de consulta y pérdida de acceso. Verificar navegación local con teclado y en tamaños de pantalla pequeño/grande; no asumir éxito si no se guardó el cambio.
+- **Dependencias**: C-03, C-06.
+- **Governance**: CRITICO — integración frontend del acceso requiere aprobación explícita de código; formularios de negocio se implementan dentro de ese alcance revisado.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Condiciones de autorización.
+  - `knowledge-base/06_funcionalidades.md` §Épica 1: Configuración de disponibilidad.
+  - `knowledge-base/07_flujos_principales.md` §FL-01 — Acceder como odontólogo y consultar la agenda y §FL-02 — Configurar motivos, horario, pausas y bloqueos.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Autenticación del odontólogo — propuesta PT-04.
+
+### [C-13] `reserva-paciente-web`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Crear recorrido React de motivo/período/horario, formulario de los cinco datos obligatorios y resultado de reserva, consumiendo C-07/C-08; interfaz de US-004/US-005 y resultado de US-010.
+  - Mantener acceso sin cuenta y sin verificación previa. Mostrar indisponibilidad, conflicto concurrente, validación y resultado incierto de acuerdo al backend, evitando presentar como libre o confirmado un resultado que no se obtuvo.
+  - Informar por separado estado conocido de reserva y situación del correo conforme PB-10; sin prometer recepción por recibir una respuesta HTTP. Comprobar recorrido local, doble solicitud según PB-08 y navegación en pantalla pequeña/grande con teclado.
+- **Dependencias**: C-08.
+- **Governance**: MEDIO — flujo de reserva y tratamiento de resultados con checkpoints; consume las respuestas públicas aprobadas.
+- **Leer antes**:
+  - `knowledge-base/01_vision_y_objetivos.md` §Reserva y autogestión y §Comunicaciones.
+  - `knowledge-base/02_descripcion_general.md` §API REST propuesta.
+  - `knowledge-base/06_funcionalidades.md` §Épica 2: Reserva web del paciente y §US-010 — Recibir confirmación y enlaces por email.
+  - `knowledge-base/07_flujos_principales.md` §FL-03 — Consultar motivos y disponibilidad y §FL-04 — Reservar y originar la confirmación por email.
+
+### [C-14] `autogestion-paciente-web`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Implementar apertura de enlace, consulta mínima del turno, solicitud expresa de cancelación y elección/confirmación de nuevo horario; consumir C-04/C-09 sin mutaciones al cargar o previsualizar.
+  - Integrar transporte y manejo de material privado exclusivamente conforme al contrato revisado de C-04. Presentar diseño y obtener aprobación explícita de código para esta integración; no guardar enlaces en logs ni añadir persistencia de credenciales por conveniencia.
+  - Mostrar enlace inválido/vencido, fuera de plazo con contacto operativo acordado, destino ocupado y original conservado si falla; recuperación según PB-07, sin agregar cuenta o verificación previa.
+  - Verificar US-007/US-008/US-009 sobre enlaces locales reales, incluida apertura desde emails y ausencia de cambios por previsualización; comprobar teclado y pantallas pequeña/grande sin solicitar mockups.
+- **Dependencias**: C-09.
+- **Governance**: CRITICO — manejo frontend de credenciales/enlaces y datos protegidos; aprobación de código separada del roadmap.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §Autogestión sin cuenta, con enlace privado.
+  - `knowledge-base/06_funcionalidades.md` §Épica 4: Autogestión del turno por enlace.
+  - `knowledge-base/07_flujos_principales.md` §FL-05 — Abrir el enlace privado de autogestión, §FL-06 — Cancelar por autogestión y §FL-07 — Reprogramar sin perder el turno original ante fallo.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Autogestión del paciente — propuesta PT-04.
+
+### [C-15] `agenda-odontologo-web`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Crear consulta diaria/semanal y detalle de turno de US-006 sobre C-10, con motivo, intervalo, estado y cinco datos básicos; reutilizar la integración de acceso frontend de C-12 y la zona acordada, sin edición de pacientes ni botones de operaciones manuales pendientes.
+  - Diferenciar agenda vacía, carga, error y acceso no válido; actualizar la información tras consultar nuevamente cambios persistidos, sin añadir WebSocket ni tiempo real obligatorio.
+  - Comprobar día/semana, detalle y estados cancelados/reprogramados con fixtures o turnos creados por los flujos; verificar legibilidad y navegación local pequeña/grande. La protección real de la API se verifica en C-03/C-10/C-16, no por ocultar esta pantalla.
+- **Dependencias**: C-10, C-12.
+- **Governance**: BAJO — interfaz de consulta sobre mecanismos de acceso existentes; no incluye cambios en autenticación/autorización.
+- **Leer antes**:
+  - `knowledge-base/03_actores_y_roles.md` §RBAC — Matriz de permisos.
+  - `knowledge-base/04_modelo_de_datos.md` §Paciente y §Turno.
+  - `knowledge-base/06_funcionalidades.md` §US-006 — Consultar agenda y datos básicos de turnos.
+  - `knowledge-base/07_flujos_principales.md` §FL-01 — Acceder como odontólogo y consultar la agenda.
+
+---
+
+## FASE 6 — Empaquetado y aceptación local
+
+### [C-16] `entrega-local-verificacion`
+
+- **Estado**: `[ ]` pendiente.
+- **Scope**:
+  - Completar integración reproducible del build frontend/backend conforme a PT-05 revisada: servir React compilado y sus rutas desde Spring Boot sin servidor Node.js para la demostración; documentar comandos reales, requisitos, variables sin secretos y pasos de inicio/detención.
+  - Recorrer FL-01 a FL-09 desde un entorno limpio de prueba y después de reiniciar sobre los datos persistidos, sin recrear consultorio/configuración/pacientes/turnos/avisos. Verificar CT-04/CT-05 y CA-VIS-07; no ejecutar restauraciones ni añadir backup como requisito.
+  - Consolidar matriz de los 48 CA-US, CT-01 a CT-06 y CA-VIS-01 a CA-VIS-07 con evidencia, resultado y pendientes. Comprobar reserva/configuración/reprogramación concurrentes en PostgreSQL real, fallos conservando el original, límites temporales acordados y llamadas directas sin permisos.
+  - Comprobar recepción en buzón de confirmación, cancelación, reprogramación y recordatorio a destinatarios de prueba habilitados, además de apertura de sus enlaces en la computadora local. Aceptación SMTP o simulación no satisface CA-VIS-06; si falta habilitación, dejar el criterio pendiente.
+  - Abrir todas las pantallas en navegador a tamaños pequeño/grande, revisar errores de consola y solicitudes fallidas y registrar evidencia de flujos/estados. No se exige comparación con mockups porque la política es `off`; informar qué se comprobó y qué quedó manual o sin ejecutar.
+  - Entregar instrucciones y límites de la demostración, pendientes PB/AT que impidan aceptación y pasos de validación posterior del producto; no declarar disponibilidad pública, producción comercial, cumplimiento normativo ni validación con odontólogos.
+- **Dependencias**: C-11, C-12, C-13, C-14, C-15.
+- **Governance**: ALTO — revisión del empaquetado/configuración antes de escribirla; las pruebas son sobre datos ficticios. Cualquier defecto que exija cambiar seguridad se corrige bajo aprobación CRITICAL, sin ampliar este alcance por inferencia.
+- **Leer antes**:
+  - `knowledge-base/01_vision_y_objetivos.md` §Criterios de aceptación aprobados para la entrega local y §Límites de la demostración y pendientes.
+  - `knowledge-base/06_funcionalidades.md` §Criterios transversales aprobados y §Condiciones para considerar completa una historia.
+  - `knowledge-base/07_flujos_principales.md` §FL-08 — Enviar confirmaciones, cambios y recordatorios y §FL-09 — Retomar la operación local tras un reinicio.
+  - `knowledge-base/08_arquitectura_propuesta.md` §Compilación, ejecución y verificación.
+  - `knowledge-base/10_preguntas_abiertas.md` §Orden recomendado de resolución y §Preguntas de producto y operación posterior.

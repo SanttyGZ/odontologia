@@ -1,0 +1,477 @@
+{
+  "version": 5,
+  "step": "registry",
+  "owner": "active-orchestrator",
+  "discovery": {
+    "created_by": "discovery-research",
+    "status": "approved",
+    "approved_at": "2026-11-18",
+    "approved_by": "user",
+    "approval_statement": "no existe presupuesto minimo, todo con tegnologias gratuitas en lo posible, queda todo OK",
+    "document_file": "discovery/discovery.md",
+    "sources": [
+      "https://bilog.com.ar/",
+      "https://bilog.com.ar/agenda/",
+      "https://bilog.com.ar/planes/",
+      "https://bilog.com.ar/seguridad/",
+      "https://bilog.com.ar/terms_and_conditions/",
+      "https://bilog.com.ar/electronic-invoice/",
+      "https://docs.bilog.com.ar/initial-guide/initial-setup",
+      "https://www.softwaredentalink.com/",
+      "https://www.softwaredentalink.com/planes",
+      "https://web-ar.softwaredentalink.com/experiencia-de-pacientes/agenda",
+      "https://ayuda.softwaredentalink.com/es/articles/9493127-box-sillon",
+      "https://www.softwaredentalink.com/atrae-mas-pacientes/agendamiento-online",
+      "https://www.softwaredentalink.com/politica-general-de-seguridad-de-la-informacion",
+      "https://ayuda.softwaredentalink.com/es/collections/9633575-agenda",
+      "https://www.capterra.com/p/196361/Dentalink/",
+      "https://www.drapp.com.ar/odontologia",
+      "https://www.drapp.com.ar/planes",
+      "https://www.drapp.com.ar/seguridad",
+      "https://developers.drapp.com.ar/",
+      "https://www.dentalsoft.com.ar/",
+      "https://www.dentalsoft.com.ar/funcionalidades/agenda-odontologica",
+      "https://www.dentalsoft.com.ar/privacidad",
+      "https://www.dentalsoft.com.ar/blog/como-liquidar-honorarios-comisiones-odontologos",
+      "https://dentalsoft.com.ar/terminos",
+      "https://web.dentaltec.com.ar/",
+      "https://web.dentaltec.com.ar/funcionalidades",
+      "https://web.dentaltec.com.ar/preguntas-frecuentes",
+      "https://cora.org.ar/actualidad/481-dentaltec-gestion-de-consultorios",
+      "https://www.dentidad.com/",
+      "https://www.dentidad.com/privacidad",
+      "https://pro.doctoralia.com/ar/precio",
+      "https://pro.doctoralia.com/ar/agenda-doctoralia-para-especialistas",
+      "https://www.doctoraliar.com/odontologo/buenos-aires",
+      "https://agendapro.com/ar",
+      "https://agendapro.com/ar/planes",
+      "https://agendapro.com/go/ar-ficha-clinica",
+      "https://ayuda.agendapro.com/es/articles/4659356-como-creo-una-ficha-o-expediente",
+      "https://www.capterra.com/p/218709/AgendaPro/reviews/",
+      "https://agendapro.com/cl/nosotros",
+      "https://ayuda.agendapro.com/es/articles/4544053-politica-de-privacidad-de-agendapro",
+      "https://gbsystems.com/os/",
+      "https://gbsystems.com/os/producto.htm",
+      "https://gbsystems.com/os/precios.htm",
+      "https://odontosoft.com/prices.htm",
+      "https://odontosys.com/",
+      "https://help.odontosys.com/knowledge-base/como-instalar-odontosys/",
+      "https://whatsapp.odontosys.com/",
+      "https://mensajes.odontosys.com/",
+      "https://www.dentify.com.ar/",
+      "https://www.dentify.com.ar/agenda-turnos-odontologos",
+      "https://www.dentify.com.ar/software-consultorio-odontologico",
+      "https://odonthia.com/",
+      "https://odonthia.com/planes",
+      "https://odonthia.com/funcionalidades/agenda",
+      "https://odonthia.com/funcionalidades/reserva-online",
+      "https://odonthia.com/funcionalidades/whatsapp",
+      "https://odonthia.com/seguridad",
+      "https://odonthia.com/funcionalidades/obras-sociales",
+      "https://odonthia.com/funcionalidades/periodontograma",
+      "https://odonthia.com/funcionalidades/sincronizacion-calendario",
+      "https://odonthia.com/funcionalidades/comisiones-y-liquidaciones",
+      "https://www.doctocliq.com/",
+      "https://www.doctocliq.com/planes-y-precios",
+      "https://www.doctocliq.com/software-dental",
+      "https://www.doctocliq.com/pe/politica-de-privacidad",
+      "https://www.doctocliq.com/nosotros",
+      "https://www.dentidesk.com/",
+      "https://www.dentidesk.com/dentidesk/feature",
+      "https://app.dentidesk.com/terminos.php",
+      "https://www.dentidesk.com/dentidesk/blog",
+      "https://clinic-cloud.com/",
+      "https://clinic-cloud.com/tarifas",
+      "https://www.capterra.es/software/207032/clinic-cloud",
+      "https://www.clinicorp.com/",
+      "https://www.clinicorp.com/planos",
+      "https://api.clinicorp.com/api-docs/",
+      "https://apps.apple.com/br/app/clinicorp/id1213414194?platform=iphone&see-all=reviews",
+      "https://www.clinicorp.com/clinicorp-ia",
+      "https://www.simplesdental.com/",
+      "https://www.simplesdental.com/planos-e-precos",
+      "https://www.simplesdental.com/agenda-online",
+      "https://www.simplesdental.com/prontuario-digital",
+      "https://www.simplesdental.com/politica",
+      "https://www.capterra.com/p/219187/Simples-Dental/",
+      "https://www.opendental.com/",
+      "https://www.opendental.com/manual/fees.html",
+      "https://www.opendental.com/manual/appointments.html",
+      "https://www.opendental.com/manual/blockouts.html",
+      "https://www.opendental.com/manual/audittrail.html",
+      "https://www.opendental.com/site/apiappointments.html",
+      "https://www.opendental.com/site/websched.html",
+      "https://www.capterra.com/p/122350/Open-Dental/",
+      "https://carestack.com/",
+      "https://carestack.com/pricing",
+      "https://carestack.zendesk.com/hc/en-us/articles/44351235929108-An-Overview-of-the-Scheduler",
+      "https://carestack.zendesk.com/hc/en-us/articles/30276500286868-Block-or-Unblock-Time-Slots-on-the-Scheduler",
+      "https://carestack.zendesk.com/hc/en-us/articles/26439241435924-Configure-Scheduler-General-Settings",
+      "https://www.capterra.com/p/176206/CareStack/",
+      "https://carestack.com/legal/uk/privacypolicy.pdf",
+      "https://www.argentina.gob.ar/normativa/nacional/ley-25326-64790/actualizacion",
+      "https://www.argentina.gob.ar/normativa/nacional/160432/actualizacion",
+      "https://www.argentina.gob.ar/normativa/nacional/ley-27706-380710/texto",
+      "https://www.argentina.gob.ar/normativa/nacional/decreto-393-2023-387475/texto",
+      "https://www.opendental.com/manual/chart.html",
+      "https://www.opendental.com/manual/perio.html",
+      "https://opendental.com/Manual/procedurenotes.html",
+      "https://opendental.com/Manual/treatmentplan.html",
+      "https://www.opendental.com/site/checklistconverteddb.html",
+      "https://www.opendental.com/manual/sheets.html",
+      "https://www.docplanner.com/about-us",
+      "https://www.opendental.com/site/contact.html",
+      "https://carestack.zendesk.com/hc/en-us/articles/26585299884820-Configure-Scheduler-Settings"
+    ],
+    "sources_consulted_at": "2026-11-18",
+    "competitors": [
+      {
+        "name": "Bilog",
+        "notes_file": "discovery/sources/bilog.md"
+      },
+      {
+        "name": "Dentalink",
+        "notes_file": "discovery/sources/dentalink.md"
+      },
+      {
+        "name": "DrApp",
+        "notes_file": "discovery/sources/drapp.md"
+      },
+      {
+        "name": "DentalSoft",
+        "notes_file": "discovery/sources/dentalsoft.md"
+      },
+      {
+        "name": "DentalTec",
+        "notes_file": "discovery/sources/dentaltec.md"
+      },
+      {
+        "name": "Dentidad",
+        "notes_file": "discovery/sources/dentidad.md"
+      },
+      {
+        "name": "Doctoralia Pro Argentina",
+        "notes_file": "discovery/sources/doctoralia-pro-argentina.md"
+      },
+      {
+        "name": "AgendaPro",
+        "notes_file": "discovery/sources/agendapro.md"
+      },
+      {
+        "name": "OdontoSoft Millennium!",
+        "notes_file": "discovery/sources/odontosoft-millennium.md"
+      },
+      {
+        "name": "Odontosys",
+        "notes_file": "discovery/sources/odontosys.md"
+      },
+      {
+        "name": "Dentify",
+        "notes_file": "discovery/sources/dentify.md"
+      },
+      {
+        "name": "Odonthia",
+        "notes_file": "discovery/sources/odonthia.md"
+      },
+      {
+        "name": "Doctocliq",
+        "notes_file": "discovery/sources/doctocliq.md"
+      },
+      {
+        "name": "DENTIDESK",
+        "notes_file": "discovery/sources/dentidesk.md"
+      },
+      {
+        "name": "Clinic Cloud",
+        "notes_file": "discovery/sources/clinic-cloud.md"
+      },
+      {
+        "name": "Clinicorp",
+        "notes_file": "discovery/sources/clinicorp.md"
+      },
+      {
+        "name": "Simples Dental",
+        "notes_file": "discovery/sources/simples-dental.md"
+      },
+      {
+        "name": "Open Dental",
+        "notes_file": "discovery/sources/open-dental.md"
+      },
+      {
+        "name": "CareStack",
+        "notes_file": "discovery/sources/carestack.md"
+      }
+    ],
+    "problema": "Reducir el trabajo de reservar, confirmar y reprogramar turnos de un odontólogo independiente en Argentina mediante un SaaS comercial con una agenda por consultorio.",
+    "usuarios": [
+      "Odontólogo: único administrador interno de su agenda. Configura motivos de consulta y duración, disponibilidad semanal, pausas y bloqueos; consulta y gestiona los turnos y los datos básicos de sus pacientes.",
+      "Paciente: consulta disponibilidad, reserva y recibe los enlaces para gestionar su turno por email. No crea una cuenta ni verifica previamente su email."
+    ],
+    "casos_de_uso": [
+      "Como odontólogo, quiero configurar los motivos de consulta y su duración para que la disponibilidad contemple el tiempo necesario de cada turno.",
+      "Como odontólogo, quiero establecer mi horario semanal con pausas, vacaciones y excepciones para ofrecer solo horarios disponibles.",
+      "Como paciente, quiero elegir un motivo de consulta y un horario libre, ingresar mis datos y recibir una confirmación automática para reservar sin coordinación manual.",
+      "Como paciente, quiero cancelar o reprogramar desde los enlaces enviados por email, dentro del plazo permitido, para gestionar mi turno sin llamadas.",
+      "Como odontólogo, quiero consultar mi agenda y los datos básicos asociados a cada turno para organizar mi trabajo y contactar al paciente cuando sea necesario."
+    ],
+    "funcionalidades_necesarias": [
+      "Agenda única e independiente por consultorio, administrada únicamente por su odontólogo.",
+      "Consulta de agenda diaria y semanal, con datos básicos de pacientes y turnos.",
+      "Motivos de consulta con duraciones configuradas por el odontólogo.",
+      "Disponibilidad semanal habitual con pausas y bloqueos por vacaciones o excepciones.",
+      "Cálculo de horarios libres según duración y disponibilidad.",
+      "Prevención de reservas superpuestas, incluso al solicitar el mismo horario simultáneamente.",
+      "Enlace web público para reservar sin cuenta de paciente ni verificación previa del email.",
+      "Formulario obligatorio con nombre, apellido, email, teléfono y DNI.",
+      "Confirmación automática de la reserva al obtener un horario libre.",
+      "Enlaces privados enviados por email para cancelar y reprogramar dentro del plazo permitido.",
+      "Emails de confirmación inmediata, aviso de cambios y un recordatorio 24 horas antes.",
+      "Acceso del odontólogo a su agenda y protección de los datos de pacientes, con el diseño de controles correspondiente en las siguientes fases."
+    ],
+    "funcionalidades_opcionales": [
+      "Gestión clínica: historia clínica, anamnesis, odontograma, periodontograma, imágenes y tratamientos.",
+      "Cobros a pacientes, señas, facturación e integraciones de pago.",
+      "WhatsApp como canal de recordatorios o asistente conversacional.",
+      "Acceso propio para recepción, múltiples profesionales dentro de un consultorio y varias sedes."
+    ],
+    "reglas_de_negocio": [
+      "Agenda: Una agenda por consultorio, con un odontólogo como administrador interno.",
+      "Duración: Depende del motivo de consulta, según configuración del odontólogo.",
+      "Disponibilidad: Horario semanal habitual con pausas y bloqueos por vacaciones o excepciones.",
+      "Ventana de reserva: El paciente puede reservar desde 24 horas antes y hasta 30 días hacia adelante.",
+      "Confirmación: Automática al reservar un horario disponible.",
+      "Cancelación autónoma: Permitida hasta 24 horas antes del turno.",
+      "Reprogramación autónoma: Permitida hasta 24 horas antes; el nuevo horario debe ser válido y estar libre.",
+      "Acceso del paciente: Sin cuenta ni verificación previa del email; recibe enlaces por correo.",
+      "Datos obligatorios: Nombre, apellido, email, teléfono y DNI.",
+      "Superposiciones: El sistema impide reservas superpuestas.",
+      "Correos: Confirmación inmediata, avisos de cambios y un recordatorio 24 horas antes."
+    ],
+    "integraciones": [
+      "Email: confirmación inmediata, avisos de cambios, un recordatorio 24 horas antes y enlaces privados para gestionar el turno; proveedor pendiente."
+    ],
+    "restricciones": [
+      "Objetivo: SaaS comercial para vender a consultorios odontológicos.",
+      "Mercado inicial: odontólogos independientes en Argentina.",
+      "Plazo solicitado: una semana para la primera versión funcional. Fecha exacta de inicio y entrega pendiente; no se infiere un calendario.",
+      "Presupuesto: no existe presupuesto mínimo definido. Se priorizarán tecnologías y servicios gratuitos cuando sea posible. Esto no fija un máximo absoluto de ARS 0, no garantiza operación gratuita y no autoriza contratar servicios pagos.",
+      "Tecnologías obligatorias: Spring Boot con Gradle y TypeScript.",
+      "Resto del stack: por definir; no se elige implícitamente lenguaje JVM, framework frontend, persistencia, versiones ni infraestructura.",
+      "Validación: todavía no hay un odontólogo disponible para entrevistas o piloto.",
+      "Datos: incluir DNI, teléfono y email según decisión del usuario; definir protección, accesos, conservación y operación antes del uso real."
+    ],
+    "riesgos": [
+      "Demanda sin validar: falta acceso a un odontólogo que contraste los flujos, el problema prioritario y la disposición a pagar.",
+      "Plazo ajustado: una semana limita el alcance y deja poco margen para validación y puesta en operación.",
+      "Email sin verificación previa: un error o el uso de una dirección ajena puede impedir que el paciente correcto reciba sus enlaces. La elección de no verificar previamente se conserva.",
+      "Entrega de correo: fallas, demoras o filtrado pueden impedir los avisos; no existe proveedor ni mecanismo de recuperación definidos.",
+      "Coincidencia a 24 horas: una reserva en el límite mínimo coincide con el momento del recordatorio. Debe definirse cómo evitar mensajes duplicados.",
+      "Disponibilidad simultánea: la consulta de un hueco libre no debe permitir dos reservas superpuestas al confirmarse.",
+      "Cambios posteriores: modificar horarios, bloqueos o duraciones puede afectar turnos existentes; falta definir el procedimiento.",
+      "Gratuidad operativa: las opciones gratuitas pueden tener cuotas o condiciones incompatibles con el uso previsto. Deben comprobarse al elegir proveedores.",
+      "Datos personales: los datos obligatorios y los enlaces requieren un tratamiento cuidadoso; los controles y la operación se diseñarán antes de usar información real.",
+      "Resultado esperado como hipótesis: se busca reducir trabajo administrativo, pero todavía no hay una línea de base ni una mejora medida."
+    ],
+    "preguntas_abiertas": [
+      "Nombre comercial, tarifa y mecanismo de suscripción del SaaS.",
+      "Fecha exacta de inicio y entrega de la semana de implementación, y criterio de aceptación de esa primera versión.",
+      "Proveedor de email, cuotas gratuitas, dominio/remitente y recuperación ante fallas; efectos de un email incorrecto.",
+      "Base de datos, lenguaje JVM, framework frontend, versiones, alojamiento y demás decisiones del stack.",
+      "Límites temporales inclusivos, zona horaria, vencimiento de enlaces y tratamiento de un enlace reenviado o perdido.",
+      "Comportamiento del recordatorio para reservas realizadas exactamente 24 horas antes.",
+      "Cambio de disponibilidad o duración cuando ya existen turnos, y excepciones gestionadas directamente por el odontólogo.",
+      "Reglas de identificación de pacientes, duplicados y corrección de DNI, teléfono y email.",
+      "Medidas de protección, conservación, respaldo y recuperación para la puesta en operación.",
+      "Acceso a un odontólogo para validar, plan de piloto y métricas de reducción de trabajo.",
+      "Priorización posterior de clínica, cobros, WhatsApp, lista de espera y otras extensiones."
+    ],
+    "stack_obligatorio": [
+      "Spring Boot",
+      "Gradle",
+      "TypeScript"
+    ],
+    "budget_policy": "No existe presupuesto mínimo definido; priorizar tecnologías y servicios gratuitos cuando sea posible. No se impone un máximo absoluto de ARS 0 ni se autorizan contrataciones pagas.",
+    "delivery_target": "Una semana para una primera versión funcional; fechas exactas y aptitud para operación comercial por verificar.",
+    "research_artifacts": {
+      "report": "discovery/informe-mercado.md",
+      "matrix": "discovery/matrices-detalladas.md",
+      "sources": "discovery/fuentes.md",
+      "data": "discovery/relevamiento.json"
+    },
+    "validation_status": "Sin odontólogo disponible; no hay piloto ni demanda validados."
+  },
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "interactive",
+    "discovery": {
+      "problem": "Reducir el trabajo de reservar, confirmar y reprogramar turnos de un odontólogo independiente en Argentina mediante un SaaS comercial con una agenda por consultorio.",
+      "system_type": "web_app",
+      "domain": "odontologia",
+      "scale": "single_consultorio (un odontólogo interno; pacientes concurrentes sin cuenta)",
+      "stack": "Java 21 (Eclipse Temurin) + Spring Boot + Gradle Wrapper + React + TypeScript + Vite + CSS + PostgreSQL local + Spring Mail/SMTP",
+      "needs_infra": true
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/README.md"
+    ]
+  },
+  "visual_design": {
+    "created_by": "design-system",
+    "mode": "off",
+    "status": "skipped",
+    "path": "design-system/README.md"
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "source": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10",
+      "C-11",
+      "C-12",
+      "C-13",
+      "C-14",
+      "C-15",
+      "C-16"
+    ]
+  },
+  "skills": {
+    "created_by": "find-skill",
+    "recommended": [
+      {
+        "name": "springboot-patterns",
+        "source": "affaan-m/ecc",
+        "url": "https://skills.sh/affaan-m/ecc/springboot-patterns",
+        "skill_source_url": "https://raw.githubusercontent.com/affaan-m/ecc/main/skills/springboot-patterns/SKILL.md",
+        "installs_display": "6.8K",
+        "installs_metric": "Installs (etiqueta de la ficha; no es Weekly Installs)",
+        "github_stars": 307301,
+        "github_stars_source": "https://api.github.com/repos/affaan-m/ecc",
+        "verified_at": "2026-11-19",
+        "reason": "REST, DTOs, validación, servicios y transacciones para el backend Spring Boot de C-01 a C-11.",
+        "limitations": "Aplicar selectivamente REST, DTO, validación, servicios y transacciones en el monolito por funciones. No usar el ejemplo @Async/en-memoria de correo ni su retry genérico para avisos durables o reintentos SMTP: PT-03/PB-10/PB-11 siguen pendientes. No adoptar JPA, colas, Redis, caché u observabilidad por omisión. Los ejemplos de rate limiting/logging no autorizan código de seguridad (CRITICAL). No es guía específica de Gradle/versiones; AT-01/AT-02 siguen pendientes.",
+        "optional": false,
+        "already_installed": false,
+        "install_command": "npx skills add affaan-m/ecc --skill springboot-patterns -a codex",
+        "selected": false
+      },
+      {
+        "name": "vercel-react-best-practices",
+        "source": "vercel-labs/agent-skills",
+        "url": "https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices",
+        "skill_source_url": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md",
+        "installs_display": "915.9K",
+        "installs_metric": "Installs (etiqueta de la ficha; no es Weekly Installs)",
+        "github_stars": 34551,
+        "github_stars_source": "https://api.github.com/repos/vercel-labs/agent-skills",
+        "verified_at": "2026-11-19",
+        "reason": "Componentes React, manejo de renderizados, carga de datos cliente y bundle para C-12 a C-15.",
+        "limitations": "Usar solo reglas compatibles con React SPA/Vite; omitir Next.js/RSC/SSR. No adoptar SWR, next/dynamic o memoización indiscriminada por instalar esta skill; no agrega diseño ni mockups.",
+        "optional": false,
+        "already_installed": false,
+        "install_command": "npx skills add vercel-labs/agent-skills --skill vercel-react-best-practices -a codex",
+        "selected": true
+      },
+      {
+        "name": "supabase-postgres-best-practices",
+        "source": "supabase/agent-skills",
+        "url": "https://skills.sh/supabase/agent-skills/supabase-postgres-best-practices",
+        "skill_source_url": "https://raw.githubusercontent.com/supabase/agent-skills/main/skills/supabase-postgres-best-practices/SKILL.md",
+        "installs_display": "491.9K",
+        "installs_metric": "Installs (etiqueta de la ficha; no es Weekly Installs)",
+        "github_stars": 3108,
+        "github_stars_source": "https://api.github.com/repos/supabase/agent-skills",
+        "verified_at": "2026-11-19",
+        "reason": "Esquemas, índices, consultas, transacciones y bloqueo PostgreSQL para C-02/C-05/C-08/C-09.",
+        "limitations": "La fuente oficial indica Postgres running anywhere: sirve para PostgreSQL local. No adoptar Supabase como servicio ni RLS/multiempresa; las decisiones de migración, concurrencia y gobernanza siguen pendientes.",
+        "optional": false,
+        "already_installed": false,
+        "install_command": "npx skills add supabase/agent-skills --skill supabase-postgres-best-practices -a codex",
+        "selected": true
+      },
+      {
+        "name": "webapp-testing",
+        "source": "anthropics/skills",
+        "url": "https://skills.sh/anthropics/skills/webapp-testing",
+        "skill_source_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/webapp-testing/SKILL.md",
+        "installs_display": "209.6K",
+        "installs_metric": "Installs (etiqueta de la ficha; no es Weekly Installs)",
+        "github_stars": 197712,
+        "github_stars_source": "https://api.github.com/repos/anthropics/skills",
+        "verified_at": "2026-11-19",
+        "reason": "Opcional: recorridos funcionales locales de reserva/autogestión/agenda y captura de errores para C-12 a C-16.",
+        "limitations": "Solapa en parte con el Playwright MCP ya disponible. Sus helpers usan Python Playwright: instalar la skill no instala Python, navegadores ni dependencias. No sustituye pruebas reales de PostgreSQL/concurrencia ni la recepción en buzón; no impone mockups.",
+        "optional": true,
+        "already_installed": false,
+        "install_command": "npx skills add anthropics/skills --skill webapp-testing -a codex",
+        "selected": true
+      }
+    ],
+    "installed": [
+      "vercel-react-best-practices",
+      "supabase-postgres-best-practices",
+      "webapp-testing"
+    ],
+    "status": "installed",
+    "selected": [
+      "vercel-react-best-practices",
+      "supabase-postgres-best-practices",
+      "webapp-testing"
+    ],
+    "declined": [
+      "springboot-patterns"
+    ],
+    "install_scope": "project",
+    "install_path": ".agents/skills",
+    "installation_details": [
+      {
+        "name": "vercel-react-best-practices",
+        "scope": "project",
+        "path": ".agents/skills/vercel-react-best-practices",
+        "source": "vercel-labs/agent-skills",
+        "source_path": "skills/react-best-practices",
+        "source_commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+        "method": "skill-installer --dest .agents/skills",
+        "skill_md_sha256": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355"
+      },
+      {
+        "name": "supabase-postgres-best-practices",
+        "scope": "project",
+        "path": ".agents/skills/supabase-postgres-best-practices",
+        "source": "supabase/agent-skills",
+        "source_path": "skills/supabase-postgres-best-practices",
+        "source_commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+        "method": "skill-installer --dest .agents/skills",
+        "skill_md_sha256": "ad65e776f45e761bafc609d3f506c77c1032225aa65e0c4c02f241b8071e5855"
+      },
+      {
+        "name": "webapp-testing",
+        "scope": "project",
+        "path": ".agents/skills/webapp-testing",
+        "source": "anthropics/skills",
+        "source_path": "skills/webapp-testing",
+        "source_commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+        "method": "skill-installer --dest .agents/skills",
+        "skill_md_sha256": "51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2"
+      }
+    ]
+  }
+}

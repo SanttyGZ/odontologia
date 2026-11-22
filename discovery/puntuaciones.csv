@@ -1,0 +1,20 @@
+﻿Producto,Turnos y automatización,Clínica dental,Integraciones locales y WhatsApp,"Administración, cobros y facturación",Experiencia del paciente,"Seguridad, exportación y trazabilidad",Precio y adopción,Total ponderado sobre 5,Justificación
+Bilog,3.5,3.5,2.5,4,3,3.5,3,3.35,"Agenda y sobreturnos visibles; clínica sin periodontograma evidenciado; AFIP y cobertura local, pero MP/API oficial no evidenciadas; exportación contractual con alcance a probar."
+Dentalink,4.5,4.5,2.5,3.5,4,3,2,3.725,"Amplia agenda y automatización, odontograma/periodontograma; integraciones locales fiscales sin demostrar; política de seguridad sin auditoría independiente consultada."
+DrApp,3.5,4.5,4,4,4,3.5,3,3.875,Fuerte adecuación local y clínica; falta evidencia de control de boxes/espera; exportación y auditoría declaradas; extras por agenda y mensajes.
+DentalSoft,4,3.5,3.5,3.5,4,3,4,3.65,Agenda explica bloqueo/urgencia/duración y mensajería por plan; liquidación tiene límites publicados; políticas y exportación disponibles; sin ARCA verificada.
+DentalTec,2.5,3,3.5,4,1.5,2.5,1.5,2.825,"Alta relevancia administrativa local; cobertura pública más limitada del recorrido de reserva y clínica avanzada; auditoría comercial, no evaluación de seguridad."
+Dentidad,3,3.5,3.5,3.5,4,2.5,3.5,3.325,"Recorrido paciente y cobros locales bien descritos; falta evidencia de agenda por sillón, reprogramación autónoma y exportación clínica completa; no asumir WhatsApp automático."
+Doctoralia Pro Argentina,3.5,1,1.5,0,4.5,1,2.5,1.975,Fuerte reserva/cancelación y captación; escasa evidencia clínica dental/fiscal local; índice oficial con bloqueo reduce confianza comercial.
+AgendaPro,3.5,1.5,3,2.5,4,1.5,2,2.65,Oferta fuerte en reservas/campañas y Mercado Pago; clínica general y fiscalidad argentina sin demostrar; conflicto de páginas impide comparar precio Salud.
+OdontoSoft Millennium!,2.5,4,1,3,1.5,2,2.5,2.5,"Clínica amplia y agenda multivista; integración Calendar por CSV, sin reserva online demostrada; seguridad operativa/backups requieren validación."
+Odontosys,3,4,2,2.5,2,3,2,2.825,"Clínica amplia, WhatsApp y exportación; escasa evidencia de reserva autónoma/recursos o integración fiscal argentina; cotización por dispositivos."
+Dentify,1.5,2.5,0.5,2,1,1.5,4,1.7,Agenda interna y clínica básica publicadas; escasa evidencia de recorrido digital/integraciones; precio local y prueba clara.
+Odonthia,3.5,4,3,3,3.5,3.5,4.5,3.5,"Agenda con capacidad y reglas explícitas; clínica amplia, APIs/ARCA/cobros MP de pacientes no evidenciados; exportación tiene limitación de adjuntos."
+Doctocliq,3.5,3.5,2,2.5,3.5,2,3.5,2.975,"Clínica y reserva cubiertas, precios y límites claros; localización fiscal publicada excluye Argentina; exportación bajo solicitud, auditoría no evidenciada."
+DENTIDESK,2.5,3.5,1,2.5,2.5,2,1.5,2.375,"Agenda y controles email publicados; política contractual de exportación detallada con costos; integra fiscos extranjeros, no ARCA verificada."
+Clinic Cloud,3,2.5,1.5,2,3.5,1.5,3,2.425,"Amplia oferta general, clínica dental parcial; sin localización fiscal ni pagos argentinos; exportación de salida no evidenciada y reseñas no prueban disponibilidad actual."
+Clinicorp,4,3.5,1.5,2.5,3.5,1,2.5,2.875,Agenda/API y automatización amplias; clínica sin periodontograma evidenciado; seguridad/exportación contractual no se demostraron en muestra; precio publicado con discrepancia.
+Simples Dental,4,3.5,1.5,2.5,3.5,1.5,2.5,2.925,Lista de espera/sillas y retornos publicados; recursos extras cambian TCO; exportación de reportes no demuestra historia íntegra ni cumplimiento argentino.
+Open Dental,4,5,0.5,2,3,3.5,2,3.125,"Manual clínico/operativo muy completo; seguridad depende de despliegue, no todas las notas se auditan; sin MP/ARCA ni WhatsApp argentinos evidenciados."
+CareStack,4.5,4.5,0,2,3.5,1.5,1,2.875,Ayuda documenta recursos/bloqueos y clínica amplia; sin integraciones locales/WhatsApp evidenciadas; contrato/exportación argentinos no consultables; costo alto relativo al segmento propuesto.
