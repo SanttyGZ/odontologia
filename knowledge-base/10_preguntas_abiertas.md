@@ -56,11 +56,24 @@ PB-06 no amplía el MVP automáticamente. Si la aceptación de la primera entreg
 
 AT identifica pendientes técnicos y no reemplaza las preguntas PB. Las propuestas PT del [documento 08](08_arquitectura_propuesta.md) son puntos de partida para revisarlos, no elecciones ya aprobadas.
 
+**Actualización C-01 (2026-11-22):** AT-01 quedó resuelto con versiones fijadas
+y comprobadas; ver [README](../README.md). AT-02 quedó parcialmente resuelto
+con Spring JDBC y Flyway deshabilitado: esquema, migraciones y concurrencia
+requieren revisión en C-02. AT-08 tiene puertos, escucha, URL y configuración
+local aprobados; la zona persistida PB-02 sigue pendiente. AT-10 tiene JUnit,
+builds y pruebas reales de conexión a PostgreSQL comprobados; reglas temporales,
+concurrencia de negocio y correo permanecen pendientes para sus changes.
+Fuente: aprobación D-01 a D-05 y decisiones posteriores en el
+[diseño archivado](../openspec/changes/archive/2026-11-22-foundation-setup/design.md).
+La tabla conserva las preguntas originales para distinguir el cierre parcial.
+
+**Actualización C-02 (2026-11-22).** AT-02 se resolvió para el esquema inicial con Spring JDBC y Flyway. AT-05 se concretó con el coordinador de escritura y la exclusión en PostgreSQL. AT-08 y la parte de zona de PB-02 se concretaron para la demo con `America/Argentina/Mendoza` (UTC−3), Grupo13 y Carlos Garcia. Franjas nocturnas y solapamientos quedan para C-06. El esquema admite pacientes con datos repetidos y la política de creación o reutilización de PB-04 se decide en C-08. Ver el [diseño archivado](../openspec/changes/archive/2026-11-22-core-models/design.md).
+
 | Código | Prioridad | Pregunta | Bloquea | Decisor |
 |---|---|---|---|---|
 | AT-01 | Alta | ¿Qué versiones compatibles se fijan para Spring Boot, Gradle, React, TypeScript, Vite, Node.js, npm y PostgreSQL? ¿Qué actualización Java 21 y DSL de Gradle? | Preparación reproducible del proyecto. | Agente verifica y propone; usuario revisa cambios relevantes. |
 | AT-02 | Alta | ¿Spring JDBC o JPA? ¿Qué migraciones, esquema, índices y evolución física materializan el modelo? | Persistencia y primer build con base. | Agente propone; respetar gobernanza de datos y configuración. |
-| AT-03 | Alta | ¿Se adopta sesión de Spring Security? ¿Cómo se inicializa, recupera y cierra el acceso del odontólogo, con qué expiración y comportamiento tras reinicio? | Ingreso y protección interna. | Usuario aprueba el diseño y, por separado, código CRITICAL. |
+| AT-03 | Resuelta en C-03 | Spring Security con sesión en memoria de 30 minutos de inactividad, reinicio que invalida sesiones, credencial recuperable desde la computadora local y protección CSRF. | Contrato de acceso interno para C-06, C-10 y C-12. | Usuario aprobó el diseño y el código CRITICAL. [Diseño](../openspec/changes/archive/2026-11-22-acceso-interno-odontologo/design.md) |
 | AT-04 | Alta | ¿Cómo generar, transportar, persistir y recuperar material de enlaces de forma compatible con emails pendientes y reinicios? | Autogestión y composición durable del correo. | Agente propone; usuario revisa PB-07 y código CRITICAL. |
 | AT-05 | Alta | ¿Se adopta bloqueo por agenda? ¿Qué orden, aislamiento, tiempos de espera y defensa en base se usarán en todas las escrituras? | Correctitud concurrente de FL-02, FL-04, FL-06 y FL-07. | Agente diseña y prueba; usuario revisa decisiones. |
 | AT-06 | Alta | ¿Cómo coordinar intención persistida, emisor, cambios concurrentes, reinicios, avisos vencidos e intentos inciertos? | Implementación de PB-10 y PB-11; FL-08 y FL-09. | Agente propone; usuario revisa comportamiento. |
@@ -87,7 +100,7 @@ Las variables de 08 son un contrato propuesto. No hay configuración de datos, c
 
 1. Para preparar el proyecto: AT-01, AT-02 y AT-08; AP-03 para poner fechas reales.
 2. Antes de construir disponibilidad y reserva: PB-01 a PB-05 y AT-05; definir PB-08 para las operaciones que se implementen.
-3. Antes de acceso interno y autogestión: PB-07, AT-03 y AT-04, con revisión del diseño y autorización de código CRITICAL cuando corresponda.
+3. C-03 resolvió AT-03 para el acceso interno. Antes de autogestión, resolver PB-07 y AT-04 con revisión del diseño y autorización de código CRITICAL.
 4. Antes de completar correo: PB-09 a PB-11, AT-06 y AT-07; no basta con sustituir emails reales por una simulación para dar por cumplida la entrega acordada.
 5. Antes de trabajo visual: AT-11. Antes de datos reales: PB-12 y AT-09. La entrevista de AP-04 debe buscarse en paralelo cuando exista acceso a un profesional.
 

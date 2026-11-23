@@ -1,0 +1,22 @@
+# Herramientas portables y resultados locales
+.tools/
+backend/.gradle/
+backend/build/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+__pycache__/
+
+# Configuración local; solo las plantillas se comparten
+.env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
+application-local.yaml
+*.log
+
+# Editores y sistema operativo
+.idea/
+*.iml
+.DS_Store

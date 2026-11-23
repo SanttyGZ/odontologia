@@ -4,7 +4,19 @@
 **Fecha**: 2026-11-18.
 **Proyecto**: `odontologia` es el identificador del repositorio; el nombre comercial sigue pendiente.
 
-La estructura y el stack fueron aprobados por el usuario mediante «Aprobar stack y estructura; comenzar la redacción». Posteriormente aprobó 07 y autorizó «avance con todos los siguientes documentos», por lo que 08–10 se completaron sin nuevas pausas de revisión individual. Cada archivo registra su estado; no se presume aprobación de propuestas nuevas. No hay implementación ni validación con odontólogos.
+La estructura y el stack fueron aprobados por el usuario mediante «Aprobar stack y estructura; comenzar la redacción». Posteriormente aprobó 07 y autorizó «avance con todos los siguientes documentos», por lo que 08–10 se completaron sin nuevas pausas de revisión individual. Cada archivo registra su estado; no se presume aprobación de propuestas nuevas. La validación con odontólogos sigue pendiente.
+
+**Actualización C-01, 2026-11-22:** entorno mínimo implementado, verificado y
+archivado; [README de ejecución](../README.md) y
+[registro de comprobaciones](../openspec/changes/archive/2026-11-22-foundation-setup/verification.md).
+Las referencias históricas a ausencia de implementación o versiones pendientes
+se precisan con las decisiones posteriores de [09](09_decisiones_y_supuestos.md)
+y el estado técnico de [10](10_preguntas_abiertas.md). Todavía no hay funciones de
+negocio ni aceptación de las historias del MVP.
+
+**Actualización C-02, 2026-11-22.** El modelo inicial, las migraciones y la coordinación de escrituras están implementados. Las decisiones y pruebas se registran en el [change archivado](../openspec/changes/archive/2026-11-22-core-models/verification.md).
+
+**Actualización C-03, 2026-11-22.** El acceso interno del odontólogo está implementado y verificado. El contrato de sesión y protección de las rutas internas se registra en el [change archivado](../openspec/changes/archive/2026-11-22-acceso-interno-odontologo/design.md).
 
 ## Fuentes y precedencia
 
@@ -41,7 +53,7 @@ Comenzar por [visión y objetivos](01_vision_y_objetivos.md) y las fuentes anter
 4. Implementación propuesta: [02](02_descripcion_general.md) y [08](08_arquitectura_propuesta.md).
 5. Decisiones y pendientes: [09](09_decisiones_y_supuestos.md) y [10](10_preguntas_abiertas.md) antes de iniciar el trabajo correspondiente.
 
-No hay instrucciones de instalación ni comandos de ejecución de una aplicación todavía inexistente. El registro `state.kb` describe esta KB de origen interactivo y enumera los archivos. Tras la indicación del usuario «sigamos», la fundación avanzó a `visual-design`; la política visual está pendiente de elección. Las propuestas técnicas nuevas y preguntas abiertas de la KB conservan su estado.
+El [README de ejecución](../README.md) contiene los comandos reales incorporados en C-01. El registro `state.kb` conserva el origen interactivo de esta KB y su inventario documental. La fundación está completada y la política visual vigente es `off`. Las propuestas y preguntas restantes conservan su estado salvo las decisiones posteriores registradas en 09 y 10.
 
 ## Resumen técnico para la fundación
 

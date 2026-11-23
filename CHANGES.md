@@ -17,11 +17,11 @@
 ### Alcance y precedencia
 
 - Entrega: un consultorio, un odontólogo, una agenda, PostgreSQL local, frontend compilado servido por Spring Boot y emails reales a destinatarios habilitados para pruebas. Se utilizan pacientes ficticios y no se incorporan datos clínicos.
-- Stack aprobado: Java 21 Temurin, Spring Boot, Gradle Wrapper, React, TypeScript, Vite, CSS, PostgreSQL y Spring Mail/SMTP. Versiones exactas, acceso a datos, migraciones, protocolo concurrente y mecanismos de acceso permanecen sujetos a AT y PT.
+- Stack aprobado: Java 21 Temurin, Spring Boot, Gradle Wrapper, React, TypeScript, Vite, CSS, PostgreSQL y Spring Mail/SMTP. C-01 fijó versiones y el contrato local. C-02 activó Flyway, implementó el esquema inicial con Spring JDBC y estableció la coordinación por agenda. Ver [README](README.md).
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Todos los changes están pendientes. Generar o aprobar este roadmap no aprueba PT-01 a PT-06, no cierra PB y no autoriza código de seguridad.
+- C-01, C-02 y C-03 están verificados y archivados. C-06 puede avanzar con C-02 y C-03 completos. C-04 puede avanzar en paralelo según su gobernanza CRITICAL.
 
 ### Gobernanza aplicable
 
@@ -67,7 +67,7 @@ Cada US tiene cuatro CA-US en el documento 06; la columna de cierre incluye la v
 
 ### Decisiones que habilitan la implementación
 
-Las preguntas de las dos tablas siguientes se conservan abiertas salvo AT-11. El propietario y las alternativas se consultan en `knowledge-base/10_preguntas_abiertas.md`; el mapa indica dónde resolverlas, no sus respuestas.
+AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 para la demostración local se concretaron en C-01 y C-02. AT-11 ya estaba resuelto. Las tablas siguientes identifican los alcances y pendientes restantes. Consultar las actualizaciones en `knowledge-base/10_preguntas_abiertas.md`.
 
 | Pendiente | Resolver antes de | Límite que debe quedar explícito |
 |---|---|---|
@@ -84,10 +84,10 @@ Las preguntas de las dos tablas siguientes se conservan abiertas salvo AT-11. El
 | Pendiente técnico | Changes afectados y condición |
 |---|---|
 | AT-01 / PT-05 | C-01 fija compatibilidad y versiones tras verificarlas en fuentes oficiales; C-16 verifica el empaquetado. |
-| AT-02 / PT-01 | C-01 revisa acceso a datos y migraciones; C-02 materializa el modelo y restricciones; C-04/C-05 añaden sus entidades. JDBC y JPA siguen como alternativas. |
-| AT-03 / PT-04 | C-03: diseño de acceso interno y aprobación de código CRITICAL separada. |
+| AT-02 / PT-01 | C-02 implementó el modelo inicial y sus restricciones con Spring JDBC y Flyway. C-04 y C-05 añadirán sus entidades. |
+| AT-03 / PT-04 | C-03 resolvió y verificó el acceso interno con aprobación CRITICAL. La credencial de pacientes sigue en C-04. |
 | AT-04 / PT-04 | C-04: material de credencial y correo recuperable tras reiniciar; aprobación de código CRITICAL separada. |
-| AT-05 / PT-02 | C-02 concreta protocolo común de escritura; C-06/C-08/C-09 lo aplican y prueban. El bloqueo por agenda aún es una propuesta. |
+| AT-05 / PT-02 | C-02 implementó el bloqueo por agenda con relectura posterior y exclusión de turnos superpuestos. C-06, C-08 y C-09 lo aplican y prueban en sus operaciones. |
 | AT-06 / PT-03 | C-05 y C-11: contrato de intención persistida y coordinación con cambios concurrentes; C-04 acuerda cómo reconstruir los enlaces. |
 | AT-07 / SU-03 | C-11: elegir y habilitar SMTP/remitente/destinatarios; verificar condiciones oficiales y recepción. No contratar ni solicitar secretos en el chat. |
 | AT-08 | C-01/C-02: URL, puertos, escucha y zona consistentes; C-04/C-11 construyen enlaces con ese contrato y C-16 lo verifica. |
@@ -158,9 +158,9 @@ GATE 2: C-02 ✓ — primer fork
   → C-03 acceso-interno-odontologo                [Agente A]
   → C-04 credenciales-gestion-turno               [Agente B]
 
-GATE 3: C-03 y C-04 ✓
-  → C-06 configuracion-disponibilidad-api         [Agente A]
-  → C-05 intenciones-notificacion                 [Agente B]
+GATE 3: ramas con dependencias independientes
+  → C-06 configuracion-disponibilidad-api         [Agente A — C-02 y C-03 ✓]
+  → C-05 intenciones-notificacion                 [Agente B — C-04 ✓]
 
 GATE 4: C-06 ✓
   → C-07 consulta-disponibilidad-api              [Agente A]
@@ -221,7 +221,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-01] `foundation-setup`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-22. [Archivo](openspec/changes/archive/2026-11-22-foundation-setup/proposal.md), [21/21 tareas](openspec/changes/archive/2026-11-22-foundation-setup/tasks.md) y [comprobaciones](openspec/changes/archive/2026-11-22-foundation-setup/verification.md). El usuario autorizó omitir el contrato incompleto de evidencia SDD y sustituir la reproducción humana adicional por reproducción propia; se conservaron las revisiones independientes ya realizadas.
 - **Scope**:
   - Verificar y proponer versiones estables compatibles del stack aprobado, DSL de Gradle, acceso a datos, herramienta de migración y herramientas de prueba; cerrar AT-01 y el contrato inicial de AT-02/AT-08/AT-10 antes de generar configuración.
   - Crear estructura backend/frontend, Gradle Wrapper y archivos de bloqueo; preparar compilación de Spring Boot y React/TypeScript/Vite sin incorporar bibliotecas de calendario o componentes por omisión.
@@ -237,7 +237,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-02] `core-models`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-22. [Diseño](openspec/changes/archive/2026-11-22-core-models/design.md), [22/22 tareas](openspec/changes/archive/2026-11-22-core-models/tasks.md) y [comprobaciones](openspec/changes/archive/2026-11-22-core-models/verification.md). Desbloquea C-03 y C-04.
 - **Scope**:
   - Proponer esquema físico, migraciones versionadas e índices para Consultorio, Odontologo, Agenda, MotivoConsulta, FranjaSemanal, BloqueoAgenda, Paciente y Turno. Revisar PB-02/PB-04 y AT-02; las entidades de credencial y aviso se agregan en C-04/C-05.
   - Materializar relaciones, configuración única, UUID, duración reservada y estados `CONFIRMADO`/`CANCELADO`. Definir reloj controlable y tratamiento de instantes, zona persistida e intervalos `[inicio, fin)` sin cerrar por inferencia PB-01/PB-03.
@@ -257,11 +257,11 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-03] `acceso-interno-odontologo`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-22. [Diseño](openspec/changes/archive/2026-11-22-acceso-interno-odontologo/design.md), [11/11 tareas](openspec/changes/archive/2026-11-22-acceso-interno-odontologo/tasks.md) y [comprobaciones](openspec/changes/archive/2026-11-22-acceso-interno-odontologo/verification.md). Desbloquea C-06.
 - **Scope**:
   - Analizar AT-03/PT-04 y presentar diseño de alta inicial, ingreso, recuperación, cierre, expiración y efecto del reinicio para el único odontólogo; sin registro público ni cuentas de pacientes.
   - Después de aprobación explícita de código CRITICAL, implementar el mecanismo elegido, proteger familias `/api/odontologo/*` e integrar escrituras del navegador con la protección acordada. Las rutas concretas de acceso se especifican aquí; no se inventan como contrato aprobado en este índice.
-  - Si se elige sesión Spring Security, concretar persistencia, cookie y CSRF para el entorno local, sin desactivar controles globalmente ni crear credenciales fijas; sigue siendo una alternativa hasta la decisión.
+  - Spring Security mantiene una sesión en memoria con 30 minutos de inactividad, cookie de sesión y protección CSRF. El alta y la recuperación usan un archivo privado local con un verificador de contraseña.
   - Comprobar llamadas directas sin acceso, cierre y expiración; dejar contrato de frontend para C-12 y de autorización para C-06/C-10. CT-02 y parte de FL-01; US-006 se completa con agenda e interfaz.
 - **Dependencias**: C-02.
 - **Governance**: CRITICO — análisis permitido; no escribir código de acceso sin aprobación humana explícita, separada de aprobar el roadmap o su diseño.

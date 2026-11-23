@@ -8,20 +8,20 @@ El proyecto reduce el trabajo de reservar, confirmar y reprogramar turnos de un 
 
 ## Stack Tecnológico
 
-La tabla reproduce la selección aprobada en [KB 02](knowledge-base/02_descripcion_general.md#stack-tecnológico).
+La tabla resume la selección aprobada en [KB 02](knowledge-base/02_descripcion_general.md#stack-tecnológico) y las versiones concretadas en C-01; ver [README](README.md).
 
-| Capa o función | Tecnología aprobada | Versión o condición pendiente |
+| Capa o función | Tecnología aprobada | Versión o condición vigente |
 |---|---|---|
-| Lenguaje del backend | Java, distribución Eclipse Temurin | Java 21 aprobado; actualización de mantenimiento exacta por fijar. |
-| Backend | Spring Boot | Versión estable compatible por fijar; sin adoptar versiones preliminares de documentación. |
-| Construcción del backend | Gradle mediante Gradle Wrapper | Versión compatible con Spring Boot y Java 21 por fijar. |
-| Interfaz web | React y TypeScript, con CSS | Versiones exactas de React y TypeScript por fijar. |
-| Desarrollo y compilación web | Vite, Node.js y npm | Versiones compatibles por fijar; Node.js es una herramienta de desarrollo y compilación en la propuesta de empaquetado. |
-| Persistencia | PostgreSQL local | Versión estable soportada por fijar. |
+| Lenguaje del backend | Java, distribución Eclipse Temurin | JDK 21.0.13.1+2. |
+| Backend | Spring Boot | 4.2.0; dependencias Java administradas por su BOM. |
+| Construcción del backend | Gradle mediante Gradle Wrapper | 9.9.2, Kotlin DSL y distribución verificada por SHA-256. |
+| Interfaz web | React y TypeScript, con CSS | React/React DOM 19.3.1 y TypeScript 7.0.2 estricto. |
+| Desarrollo y compilación web | Vite, Node.js y npm | Vite 8.3.8, plugin React 6.3.0, Node.js 24.22.3 y npm 12.2.3. |
+| Persistencia | PostgreSQL local | 17.12; Compose local autorizado en loopback:5433 o instancia propia habilitada. |
 | Envío de correo | Spring Mail y SMTP | Biblioteca compatible con Spring Boot; cuenta, proveedor y remitente pendientes. |
 | Recordatorios | Tarea programada dentro del backend y estado de notificaciones persistido | Frecuencia de ejecución, reintentos y recuperación tras interrupciones pendientes. |
 
-En desarrollo, Vite puede ejecutarse separado con proxy de API. La demostración sirve la interfaz compilada desde Spring Boot. JDBC/JPA, migraciones, mecanismo de acceso y protocolo concurrente siguen sujetos a revisión; las propuestas PT no son decisiones aprobadas.
+En desarrollo, Vite se ejecuta separado con proxy de API. Servir la interfaz compilada desde Spring Boot se completará en C-16. C-02 implementó el esquema inicial con Spring JDBC y Flyway y el protocolo de escritura por agenda. C-03 implementó el acceso interno con Spring Security. C-04 mantiene su revisión CRITICAL para la credencial de gestión.
 
 ## Base de Conocimiento
 
@@ -64,7 +64,7 @@ El mapa de roles no autoriza por sí solo lanzar subagentes. Usar delegación ú
 
 ## Roadmap de Changes
 
-El índice operativo es [CHANGES.md](CHANGES.md): **16 changes en seis fases**, todos pendientes de implementación.
+El índice operativo es [CHANGES.md](CHANGES.md). Hay **16 changes en seis fases**. C-01, C-02 y C-03 están completados y archivados.
 
 1. Entorno local y modelo persistente.
 2. Acceso e intenciones durables.
@@ -75,7 +75,7 @@ El índice operativo es [CHANGES.md](CHANGES.md): **16 changes en seis fases**, 
 
 Cadena máxima de precedencias con duración unitaria: `C-01 → C-02 → C-03 → C-06 → C-07 → C-08 → C-09 → C-11 → C-16` (nueve changes). Las ramas restantes también son necesarias para el cierre. El plan no promete una fecha ni duración total.
 
-Primer change: **C-01 `foundation-setup`**, de gobernanza HIGH. Leer su alcance, dependencias, decisiones pendientes y referencias antes de preparar su propuesta. Este documento no aprueba configuración de datos ni código de seguridad.
+Las comprobaciones y excepciones autorizadas quedan en los archivos de [C-01](openspec/changes/archive/2026-11-22-foundation-setup/verification.md), [C-02](openspec/changes/archive/2026-11-22-core-models/verification.md) y [C-03](openspec/changes/archive/2026-11-22-acceso-interno-odontologo/verification.md). **C-06 `configuracion-disponibilidad-api`** tiene sus dependencias completas. **C-04 `credenciales-gestion-turno`** puede avanzar en paralelo según su gobernanza CRITICAL.
 
 ## Reglas Duras (específicas del proyecto)
 
@@ -126,5 +126,5 @@ Aplicar el nivel del alcance más sensible. La autorización para documentar o a
 5. Implementar el alcance autorizado cargando las skills aplicables y verificando resultados con evidencia. No introducir librerías ni mecanismos de seguridad por ejemplos de una skill.
 6. Archivar con el CLI cuando corresponda y marcar el índice solo después de verificar y archivar. Sincronizar `AGENTS.md` y `CLAUDE.md` al actualizar sus reglas.
 
-Los comandos de ejecución de la aplicación se documentarán cuando exista la implementación. Este documento no crea un backend, una base de datos, un frontend ni changes OpenSpec.
+El [README](README.md) documenta los comandos reales de build, pruebas y ejecución local, incluido cómo iniciar PostgreSQL Docker si está detenido. La base local tiene el modelo de C-02 listo para continuar con los changes funcionales.
 

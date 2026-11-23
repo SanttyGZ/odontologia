@@ -100,12 +100,29 @@ Los registros DD consolidan decisiones ya tomadas. Los PT son recomendaciones nu
 
 ## Propuestas técnicas pendientes de revisión
 
+**Actualización aprobada en C-01 (2026-11-22):** el usuario aprobó D-01 a D-05
+del [diseño archivado](../openspec/changes/archive/2026-11-22-foundation-setup/design.md),
+incluyendo versiones exactas, Gradle Kotlin DSL, Spring JDBC, Flyway inicialmente
+deshabilitado, puertos y variables locales. Después autorizó PostgreSQL Docker
+aislado con inicio documentado y las excepciones de evidencia/reproducción de
+D-06 a D-08. La reproducción final y el archivo están documentados en
+[verification.md](../openspec/changes/archive/2026-11-22-foundation-setup/verification.md).
+
+Esto resuelve la elección inicial JDBC/Flyway de PT-01, el build separado y sus
+bloqueos de PT-05, y la base de pruebas de configuración/conectividad de PT-06.
+No aprueba esas PT completas: esquema y protocolo concurrente quedan para C-02;
+empaquetado integrado, pruebas del dominio y correo siguen en sus changes.
+
+**Actualización C-02 (2026-11-22).** El usuario aprobó el [diseño de C-02](../openspec/changes/archive/2026-11-22-core-models/design.md). El change concretó la persistencia base y el reloj de PT-01 con Spring JDBC y Flyway. Para PT-02 implementó el bloqueo transaccional por agenda, relectura con READ COMMITTED y exclusión de intervalos confirmados. Los flujos de C-06, C-08 y C-09 consumen este contrato.
+
+**Actualización C-03 (2026-11-22).** El usuario aprobó el acceso interno de PT-04 y autorizó por separado el código CRITICAL. C-03 implementó el aprovisionamiento y la recuperación local, sesión en memoria, cierre, expiración y CSRF. La credencial de autogestión sigue en C-04. [Diseño archivado](../openspec/changes/archive/2026-11-22-acceso-interno-odontologo/design.md)
+
 | ID | Recomendación del documento 08 | Alternativa y costo | Qué falta comprobar |
 |---|---|---|---|
 | PT-01 | Casos de uso por función, adaptadores acotados, reloj controlable y Spring JDBC como primera opción. | JPA si facilita implementación; JDBC requiere consultas y mapeo explícitos. | Compatibilidad, experiencia y elección de acceso a datos y migraciones. |
 | PT-02 | Bloqueo transaccional por agenda y lectura actualizada posterior al bloqueo para serializar escrituras. | Exclusión temporal en base como defensa adicional; aislamiento serializable requiere otro tratamiento de conflictos. | Protocolo común, orden, tiempos de espera y pruebas de todas las rutas. |
 | PT-03 | Guardar cambio de turno e intención de aviso en una transacción; emisor local desde pendientes persistidos. | Eventos solo en memoria no cubren reinicios; componentes externos aumentan operación. | Clave de evento, recuperación, entrega incierta y coordinación con cambios durante SMTP. |
-| PT-04 | Sesión interna mediante Spring Security y credencial opaca acotada para paciente. | Proveedor externo o JWT agregan decisiones que no se requieren todavía. | Alta, recuperación, expiración, CSRF, persistencia de material de enlaces y aprobación de código CRITICAL. |
+| PT-04 | Sesión interna mediante Spring Security y credencial opaca acotada para paciente. | Proveedor externo o JWT agregan decisiones que no se requieren todavía. | C-03 resolvió el acceso interno. C-04 conserva el diseño y la aprobación CRITICAL de la credencial de enlaces. |
 | PT-05 | Compilación reproducible y empaquetado de frontend estático con el backend. | Compilar manualmente sin integración aumenta pasos operativos. | Versiones, comandos, archivos de bloqueo y verificación desde un checkout limpio. |
 | PT-06 | Pruebas temporales con reloj controlado, PostgreSQL real y concurrencia sincronizada. | Pruebas solo secuenciales o base en memoria no acreditan estos riesgos. | Herramientas, escenarios, evidencia y validación de correo. |
 
