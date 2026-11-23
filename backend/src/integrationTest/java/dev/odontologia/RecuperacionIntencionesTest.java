@@ -368,44 +368,44 @@ class RecuperacionIntencionesTest {
 
     @Test
     void noPersisteIntentoSiElAvisoVenceMientrasEsperaLaAgenda() throws Exception {
-        try (var db = new TestDatabase();
-                var app = iniciar(db, claves());
-                var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+        try (var db = new TestDatabase()) {
             var fixture = CoreSchemaTest.fixture(db);
-            var coordinador = app.getBean(AgendaWriteCoordinator.class);
-            var despachos = app.getBean(AutorizacionDespacho.class);
-            UUID turno = UUID.randomUUID();
-            UUID despacho = UUID.randomUUID();
-            var inicio = START.plusYears(10);
-            var vence = inicio.minusHours(22);
-            CoreSchemaTest.insertTurn(db.jdbc, fixture, turno, inicio, inicio.plusMinutes(30), "CONFIRMADO");
-            db.jdbc.update("""
-                    INSERT INTO intencion_notificacion
-                        (id, evento_id, turno_id, revision, tipo, destinatario, programada_en, vence_en, despacho_id)
-                    VALUES (?, ?, ?, 0, 'RECORDATORIO', 'paciente@example.test', ?, ?, ?)
-                    """, despacho, UUID.randomUUID(), turno, inicio.minusDays(1), vence, despacho);
+            try (var app = iniciar(db, claves()); var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+                var coordinador = app.getBean(AgendaWriteCoordinator.class);
+                var despachos = app.getBean(AutorizacionDespacho.class);
+                UUID turno = UUID.randomUUID();
+                UUID despacho = UUID.randomUUID();
+                var inicio = START.plusYears(10);
+                var vence = inicio.minusHours(22);
+                CoreSchemaTest.insertTurn(db.jdbc, fixture, turno, inicio, inicio.plusMinutes(30), "CONFIRMADO");
+                db.jdbc.update("""
+                        INSERT INTO intencion_notificacion
+                            (id, evento_id, turno_id, revision, tipo, destinatario, programada_en, vence_en, despacho_id)
+                        VALUES (?, ?, ?, 0, 'RECORDATORIO', 'paciente@example.test', ?, ?, ?)
+                        """, despacho, UUID.randomUUID(), turno, inicio.minusDays(1), vence, despacho);
 
-            var hora = new AtomicReference<>(vence.minusSeconds(1).toInstant());
-            var bloqueada = new CountDownLatch(1);
-            var liberar = new CountDownLatch(1);
-            var bloqueo = threads.submit(() -> coordinador.write(fixture.agenda(), () -> {
-                bloqueada.countDown();
-                esperar(liberar);
-                return null;
-            }));
-            try {
-                esperar(bloqueada);
-                var intento = threads.submit(() -> despachos.autorizar(fixture.agenda(), despacho, hora::get));
-                AgendaWriteCoordinatorTest.awaitLockWait(db);
-                hora.set(vence.toInstant());
-                liberar.countDown();
-                bloqueo.get(8, TimeUnit.SECONDS);
-                assertThat(intento.get(8, TimeUnit.SECONDS)).isEmpty();
-            } finally {
-                liberar.countDown();
+                var hora = new AtomicReference<>(vence.minusSeconds(1).toInstant());
+                var bloqueada = new CountDownLatch(1);
+                var liberar = new CountDownLatch(1);
+                var bloqueo = threads.submit(() -> coordinador.write(fixture.agenda(), () -> {
+                    bloqueada.countDown();
+                    esperar(liberar);
+                    return null;
+                }));
+                try {
+                    esperar(bloqueada);
+                    var intento = threads.submit(() -> despachos.autorizar(fixture.agenda(), despacho, hora::get));
+                    AgendaWriteCoordinatorTest.awaitLockWait(db);
+                    hora.set(vence.toInstant());
+                    liberar.countDown();
+                    bloqueo.get(8, TimeUnit.SECONDS);
+                    assertThat(intento.get(8, TimeUnit.SECONDS)).isEmpty();
+                } finally {
+                    liberar.countDown();
+                }
+                assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intento_notificacion WHERE despacho_id = ?",
+                        Long.class, despacho)).isZero();
             }
-            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intento_notificacion WHERE despacho_id = ?",
-                    Long.class, despacho)).isZero();
         }
     }
 
