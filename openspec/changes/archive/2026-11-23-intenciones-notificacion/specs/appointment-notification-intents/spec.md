@@ -56,3 +56,37 @@ El resultado de un intento de comunicación SHALL mantenerse separado del estado
 #### Scenario: CA-05-07 Aceptación SMTP
 - **WHEN** el servidor SMTP acepta un mensaje
 - **THEN** el registro indica aceptación SMTP y la evidencia de recepción queda sujeta a una comprobación de buzón
+
+### Requirement: NO-06 Recuperación y despacho combinado
+Las intenciones SHALL conservar la identidad del evento, revisión y destinatario. Un despacho combinado SHALL registrar un resultado conjunto para sus dos intenciones. La recuperación asistida SHALL coordinar la entrega con la nueva referencia de C-04.
+
+#### Scenario: CA-05-08 Reserva exactamente a 24 horas
+- **WHEN** se admite la reserva en el borde de 24 horas
+- **THEN** existen una CONFIRMACION y un RECORDATORIO elegibles de inmediato, con revisión, destinatario e identidad de despacho comunes, y un solo intento simulado actualiza ambos resultados
+
+#### Scenario: CA-05-09 Aviso de recuperación
+- **WHEN** C-04 confirma una recuperación asistida con destinatario confirmado
+- **THEN** se registra una CONFIRMACION de recuperación y el recordatorio vigente sin autorización ni historial mantiene identidad, revisión y programación con la nueva referencia y el destinatario confirmado, sin crear otro recordatorio
+
+#### Scenario: CA-05-13 Recuperación después de autorizar un recordatorio
+- **WHEN** se recupera el acceso después de autorizar un intento del recordatorio o mientras su entrega es incierta
+- **THEN** se conservan los datos e historial del intento, no se reasigna ni reintenta el aviso ligado al enlace revocado y la confirmación de recuperación se registra por separado
+
+#### Scenario: CA-05-14 Rollback de recuperación
+- **WHEN** la transacción de recuperación falla tras emitir la credencial y reasignar el recordatorio pendiente
+- **THEN** se conservan la credencial anterior, el destinatario, la referencia, la identidad y la programación del recordatorio, sin nuevas credenciales ni avisos huérfanos
+
+### Requirement: NO-07 Autorización y resultado del intento
+La autorización durable de un intento SHALL comprobar la elegibilidad vigente bajo coordinación. El cambio posterior SHALL impedir nuevos intentos de la revisión anterior. Un resultado incierto SHALL quedar diferenciado de un rechazo conocido y fuera del reintento automático.
+
+#### Scenario: CA-05-10 Intento anterior ya autorizado
+- **WHEN** se autoriza el intento anterior y después se confirma una cancelación o reprogramación
+- **THEN** el intento autorizado puede terminar incluso después del aviso de cambio, se registra su propio resultado, no se reintenta la revisión anterior y existe una intención CAMBIO de la revisión vigente
+
+#### Scenario: CA-05-11 Referencia revocada antes de componer
+- **WHEN** el intento autorizado todavía necesita componer el enlace y C-04 ya revocó su referencia
+- **THEN** se registra el fallo de composición y ese intento no envía el mensaje
+
+#### Scenario: CA-05-12 Reintentos y vencimiento
+- **WHEN** con reloj controlado se registra un fallo transitorio conocido, un resultado incierto o un aviso vencido
+- **THEN** los fallos transitorios vigentes admiten como máximo tres intentos con esperas de 1 y 5 minutos, y ni el resultado incierto ni el aviso vencido habilitan reintento automático

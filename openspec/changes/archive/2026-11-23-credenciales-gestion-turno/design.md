@@ -16,7 +16,7 @@ Decision: no (no UI)
 
 ### Contrato propuesto entre C-04 y C-05
 
-La contraparte de este contrato está en el [diseño de C-05](../intenciones-notificacion/design.md#contrato-propuesto).
+La contraparte de este contrato está en el [diseño de C-05](../2026-11-23-intenciones-notificacion/design.md#contrato-propuesto).
 
 | Operación | Entrada y resultado |
 |---|---|
@@ -39,6 +39,24 @@ flowchart LR
     C -->|"Intención elegible tras reinicio"| D["C-11 · composición interna"]
     D -->|"Recuperar enlace vigente"| B
 ```
+
+## Diseño recomendado v1.1 · Pendiente de aprobación
+
+Esta versión fija la recomendación entre las alternativas anteriores. La consulta vence al fin previsto del turno, excluido ese instante. Muestra fecha, hora, estado y acciones disponibles. La reserva y las escrituras de autogestión admiten exactamente 24 horas y se evalúan contra el estado vigente bajo coordinación de agenda. El extremo de reserva de 30 días calendario se incluye a la misma hora local del consultorio. Reprogramar conserva la credencial y actualiza su vencimiento. La consulta carga el estado vigente del turno. Cancelar revoca la credencial en la misma confirmación, por lo que un enlace anterior muestra una respuesta genérica de enlace no disponible, sin revelar datos del turno ni permitir acciones.
+
+El secreto es opaco, de 32 bytes aleatorios. C-04 conserva un verificador SHA-256 y material cifrado con AES-256-GCM, nonce nuevo y versión de clave. Las claves quedan fuera del repositorio y de PostgreSQL. Una rotación usa la clave nueva para las emisiones siguientes y conserva las anteriores mientras exista material vigente que las necesite. Una clave ausente impide componer enlaces afectados. La validación de enlaces vigentes sigue disponible mediante el verificador. Un compromiso confirmado exige revocar los enlaces afectados y recuperar acceso por el flujo asistido. C-14 recibe el secreto en el fragmento de la URL y lo elimina con history.replaceState. Lo mantiene en memoria y lo transmite al backend en un encabezado excluido de los logs.
+
+### Operación interna de recuperación asistida
+
+C-04 propone una operación autenticada del odontólogo por turno, conceptualmente `POST /api/odontologo/turnos/{id}/recuperacion-enlace`. Recibe el motivo, el método de verificación confirmado y, si corresponde, el email corregido. El odontólogo verifica presencialmente el documento o devuelve la llamada a un número previamente verificado por el consultorio. Sin evidencia suficiente, se requiere atención presencial. Se registra quién realizó la operación, cuándo y qué método usó, sin copiar el documento ni registrar el secreto.
+
+Bajo coordinación de agenda, la operación comprueba que el turno siga confirmado y dentro de su vigencia de consulta, revoca las credenciales anteriores, emite una nueva y coordina con C-05 el tratamiento de los avisos relacionados. Prepara la entrega al destinatario confirmado mediante una intención explícita de recuperación. La respuesta interna devuelve el resultado y la referencia operativa, sin devolver el enlace. C-04 cubre el endpoint y el ciclo de credenciales. C-05 cubre la intención durable y C-11 realiza el envío. Un turno cancelado o vencido no se reactiva por recuperar acceso.
+
+### Recordatorio durante la recuperación
+
+En la misma transacción de recuperación, C-05 vuelve a leer el despacho bajo coordinación de agenda. Un recordatorio pendiente, vigente y sin autorización ni historial de intentos conserva su identidad, revisión y programación. Solo se cambia la referencia de credencial y, si corresponde, el destinatario confirmado expresamente por el odontólogo. La edición por sí sola de un paciente no ejecuta esta operación. Si falla cualquiera de las escrituras, se conservan la credencial anterior y los avisos previos.
+
+Un aviso autorizado, en curso o con resultado incierto conserva el destinatario y la referencia originales, junto con su historial. El tratamiento del intento y la exclusión de nuevos intentos se definen en [C-05](../2026-11-23-intenciones-notificacion/design.md#recordatorio-durante-la-recuperación).
 
 ## Risks / Trade-offs
 

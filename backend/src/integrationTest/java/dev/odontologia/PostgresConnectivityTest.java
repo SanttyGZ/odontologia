@@ -53,7 +53,9 @@ class PostgresConnectivityTest {
             try (var app = start(db, "Demo", "Etc/UTC")) {
                 assertThat(configuration(db)).isEqualTo(before);
                 assertThat(db.jdbc.queryForObject("SELECT count(*) FROM paciente", Long.class)).isOne();
-                assertThat(db.jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Long.class)).isOne();
+                assertThat(db.jdbc.queryForList("""
+                        SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank
+                        """, String.class)).containsExactly("1", "2", "3");
             }
             assertThatThrownBy(() -> start(db, "Otro", "Etc/UTC")).hasStackTraceContaining("nombre del consultorio");
             assertThatThrownBy(() -> start(db, "Demo", "America/Argentina/Mendoza")).hasStackTraceContaining("zona horaria");
