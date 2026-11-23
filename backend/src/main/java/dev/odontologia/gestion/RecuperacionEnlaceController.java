@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 final class RecuperacionEnlaceController {
     record Solicitud(String motivo, RecuperacionEnlace.Metodo metodo, boolean verificacionConfirmada,
-            String emailCorregido) {}
+            String emailConfirmado) {}
     record Resultado(UUID referencia) {}
 
     private final RecuperacionEnlace recuperacion;
@@ -26,7 +26,7 @@ final class RecuperacionEnlaceController {
     ResponseEntity<Resultado> recuperar(@PathVariable UUID turno, @RequestBody Solicitud solicitud,
             Principal odontologo) {
         UUID referencia = recuperacion.recuperar(turno, odontologo.getName(), solicitud.motivo(),
-                solicitud.metodo(), solicitud.verificacionConfirmada(), solicitud.emailCorregido());
+                solicitud.metodo(), solicitud.verificacionConfirmada(), solicitud.emailConfirmado());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Resultado(referencia));
     }
 }

@@ -62,7 +62,7 @@ class DentistAccessTest {
             var path = ROOT + "/turnos/" + turno + "/recuperacion-enlace";
             String request = """
                     {"motivo":"Enlace perdido","metodo":"DOCUMENTO_PRESENCIAL",
-                     "verificacionConfirmada":true,"emailCorregido":"corregido@example.test"}
+                     "verificacionConfirmada":true,"emailConfirmado":"Paciente.Anterior@example.test"}
                     """;
             var browser = browser(app);
             assertError(browser.json(path, null, request), 403, "CSRF_INVALID");
@@ -82,21 +82,43 @@ class DentistAccessTest {
             assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intencion_notificacion", Long.class)).isZero();
             db.jdbc.execute("ALTER TABLE intencion_notificacion DROP CONSTRAINT fallo_fixture");
 
+            UUID recordatorio = UUID.randomUUID();
+            db.jdbc.update("""
+                    INSERT INTO intencion_notificacion
+                        (id, evento_id, turno_id, revision, tipo, destinatario, credencial_id,
+                         programada_en, vence_en, despacho_id)
+                    VALUES (?, ?, ?, 0, 'RECORDATORIO', 'Paciente.Anterior@example.test', ?, ?, ?, ?)
+                    """, recordatorio, UUID.randomUUID(), turno, anterior, inicio.minusDays(1),
+                    inicio.minusHours(22), recordatorio);
+            db.jdbc.update("UPDATE paciente SET email = 'edicion@example.test' WHERE id = ?", fixture.paciente());
+            assertThat(browser.json(path, browser.csrf(),
+                    request.replace("\"Paciente.Anterior@example.test\"", "null")).statusCode()).isEqualTo(400);
+            assertThat(credenciales.validar(secreto)).isPresent();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM recuperacion_enlace", Long.class)).isZero();
+
             var response = browser.json(path, browser.csrf(), request);
             assertThat(response.statusCode()).isEqualTo(200);
             assertThat(response.headers().firstValue("Cache-Control")).hasValue("no-store");
-            assertThat(response.body()).doesNotContain(secreto, "corregido@example.test");
+            assertThat(response.body()).doesNotContain(secreto, "Paciente.Anterior@example.test");
             var referencia = UUID.fromString(JSON.readTree(response.body()).path("referencia").asString());
             assertThat(credenciales.validar(secreto)).isEmpty();
             assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE evento_id = ?",
-                    String.class, referencia)).isEqualTo("corregido@example.test");
-            db.jdbc.update("UPDATE paciente SET email = 'edicion@example.test' WHERE id = ?", fixture.paciente());
+                    String.class, referencia)).isEqualTo("Paciente.Anterior@example.test");
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM recuperacion_enlace WHERE id = ?",
+                    String.class, referencia)).isEqualTo("Paciente.Anterior@example.test");
+            assertThat(db.jdbc.queryForObject("""
+                    SELECT r.elegible AND r.destinatario = n.destinatario AND r.credencial_id = n.credencial_id
+                    FROM intencion_notificacion r CROSS JOIN intencion_notificacion n
+                    WHERE r.id = ? AND n.evento_id = ?
+                    """, Boolean.class, recordatorio, referencia)).isTrue();
             var segunda = browser.json(path, browser.csrf(),
-                    request.replace("\"corregido@example.test\"", "null"));
+                    request.replace("Paciente.Anterior@example.test", "corregido@example.test"));
             assertThat(segunda.statusCode()).isEqualTo(200);
             var segundoEvento = UUID.fromString(JSON.readTree(segunda.body()).path("referencia").asString());
             assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE evento_id = ?",
                     String.class, segundoEvento)).isEqualTo("corregido@example.test");
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE id = ?",
+                    String.class, recordatorio)).isEqualTo("corregido@example.test");
             }
         }
     }
