@@ -32,13 +32,17 @@ Esta sección describe la contraparte del [contrato de credenciales de C-04](../
 | PB-11 / AT-06 · evento único y carrera | Recomendar identidad durable del evento más tipo, con turno y revisión como datos de alcance y consistencia. Evaluar clave basada solo en turno/revisión/tipo, que puede confluir con otros eventos si la semántica cambia. Proponer autorización durable de inicio con verificación de revisión bajo coordinación breve. Si el cambio gana, el aviso queda inelegible. Si la autorización gana, la política debe admitir o tratar el envío en curso. Una segunda lectura sin coordinación deja una carrera. |
 | PB-11 / AT-06 · resultado incierto | Si hay interrupción tras una posible aceptación SMTP y antes de registrar el resultado, proponer un resultado operativo distinguible del rechazo conocido, sujeto a revisión. Evaluar retenerlo para revisión versus reintentar con riesgo explícito de duplicado. La unicidad de intención protege la base local. La entrega SMTP exactamente una vez queda fuera de esa garantía. |
 
-## Diseño recomendado v1.1 · Pendiente de aprobación
+## Diseño v1.1 aprobado
 
 La identidad es evento durable más tipo. Una repetición con iguales parámetros devuelve el resultado original. Los parámetros distintos para la misma identidad o una escritura nueva sobre revisión anterior producen conflicto. Cancelar un turno ya cancelado devuelve su estado sin otro aviso. La reactivación queda fuera del alcance. A 24 horas exactas se persisten CONFIRMACION y RECORDATORIO con la misma revisión, destinatario y referencia de despacho. C-11 compone un solo mensaje y registra su intento conjuntamente.
 
 Confirmación y cambio quedan elegibles al confirmar el evento, con objetivo de primer intento en 2 minutos. El recordatorio queda elegible a inicio menos 24 horas, con objetivo de 5 minutos. El recordatorio vence 2 horas después de su hora prevista o antes si cambia el turno. La confirmación vence al inicio del turno y el aviso de cambio a las 24 horas del evento. El despacho combinado vence al cerrar su primera ventana. Se recuperan avisos vigentes tras reinicio. Fallos transitorios conocidos permiten hasta tres intentos, con esperas de 1 y 5 minutos después de los fallos respectivos. Rechazo permanente, material irrecuperable y resultado SMTP incierto quedan registrados para atención operativa. El resultado incierto no se reintenta automáticamente. C-11 ejecuta el calendario y prueba recepción.
 
 ### Autorización de envío y cambios posteriores
+
+La autorización lee el reloj después de adquirir el bloqueo de agenda. Usa ese
+instante para comprobar la vigencia del despacho y registrar `autorizado_en`.
+Si el aviso vence durante la espera, la operación no persiste un intento.
 
 Si el cambio se confirma primero, el despacho anterior queda inelegible. Si se confirma primero la autorización durable de un intento, **el correo anterior puede salir y llegar después del aviso de cambio**. El intento conserva destinatario, revisión y contenido de su autorización. Si todavía falta material para componerlo y C-04 ya revocó la referencia, C-11 registra el fallo de composición. Un intento autorizado puede finalizar, pero la revisión anterior queda inelegible para nuevos intentos y reintentos. Un resultado SMTP incierto se conserva como tal.
 
@@ -75,4 +79,4 @@ La prueba de concurrencia debe cubrir dos órdenes con barreras. Si gana la recu
 
 ## Aprobaciones
 
-Revisar conjuntamente el contrato con C-04 antes de implementar C-05. Ignacio decide o valida la experiencia de PB-08 a PB-11 y revisa la semántica del emisor. La migración/configuración durable exige revisión HIGH. Cualquier modificación de material privado exige autorización explícita CRITICAL. C-08 y C-09 integran las escrituras, C-11 realiza el envío y C-16 verifica el recorrido integral.
+Las [tareas 1.1 y 1.2](tasks.md) registran la aprobación explícita de Ignacio para el diseño v1.1 y la migración y persistencia HIGH de C-05, conforme al contrato CRITICAL de C-04. C-08 y C-09 integran las escrituras, C-11 realiza el envío y C-16 verifica el recorrido integral.

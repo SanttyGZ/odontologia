@@ -40,7 +40,7 @@ flowchart LR
     D -->|"Recuperar enlace vigente"| B
 ```
 
-## Diseño recomendado v1.1 · Pendiente de aprobación
+## Diseño v1.1 aprobado
 
 Esta versión fija la recomendación entre las alternativas anteriores. La consulta vence al fin previsto del turno, excluido ese instante. Muestra fecha, hora, estado y acciones disponibles. La reserva y las escrituras de autogestión admiten exactamente 24 horas y se evalúan contra el estado vigente bajo coordinación de agenda. El extremo de reserva de 30 días calendario se incluye a la misma hora local del consultorio. Reprogramar conserva la credencial y actualiza su vencimiento. La consulta carga el estado vigente del turno. Cancelar revoca la credencial en la misma confirmación, por lo que un enlace anterior muestra una respuesta genérica de enlace no disponible, sin revelar datos del turno ni permitir acciones.
 
@@ -48,7 +48,7 @@ El secreto es opaco, de 32 bytes aleatorios. C-04 conserva un verificador SHA-25
 
 ### Operación interna de recuperación asistida
 
-C-04 propone una operación autenticada del odontólogo por turno, conceptualmente `POST /api/odontologo/turnos/{id}/recuperacion-enlace`. Recibe el motivo, el método de verificación confirmado y, si corresponde, el email corregido. El odontólogo verifica presencialmente el documento o devuelve la llamada a un número previamente verificado por el consultorio. Sin evidencia suficiente, se requiere atención presencial. Se registra quién realizó la operación, cuándo y qué método usó, sin copiar el documento ni registrar el secreto.
+C-04 propone una operación autenticada del odontólogo por turno, conceptualmente `POST /api/odontologo/turnos/{id}/recuperacion-enlace`. Recibe el motivo, el método de verificación confirmado y el campo obligatorio `emailConfirmado` con la dirección exacta que el odontólogo confirmó, incluso cuando conserva la anterior. El odontólogo verifica presencialmente el documento o devuelve la llamada a un número previamente verificado por el consultorio. Sin evidencia suficiente, se requiere atención presencial. Se registra quién realizó la operación, cuándo y qué método usó, sin copiar el documento ni registrar el secreto.
 
 Bajo coordinación de agenda, la operación comprueba que el turno siga confirmado y dentro de su vigencia de consulta, revoca las credenciales anteriores, emite una nueva y coordina con C-05 el tratamiento de los avisos relacionados. Prepara la entrega al destinatario confirmado mediante una intención explícita de recuperación. La respuesta interna devuelve el resultado y la referencia operativa, sin devolver el enlace. C-04 cubre el endpoint y el ciclo de credenciales. C-05 cubre la intención durable y C-11 realiza el envío. Un turno cancelado o vencido no se reactiva por recuperar acceso.
 
@@ -75,4 +75,4 @@ Un aviso autorizado, en curso o con resultado incierto conserva el destinatario 
 
 ## Aprobaciones
 
-C-04 depende de C-02, archivado. Ignacio revisa la política de producto y el contrato con C-05. La implementación y persistencia sensible de C-04 requieren autorización humana explícita CRITICAL. C-14 requiere revisión de la incorporación del transporte en navegador.
+Las [tareas 1.1 y 1.2](tasks.md) registran la aprobación explícita de Ignacio para el diseño v1.1 y la implementación CRITICAL de C-04, incluida la recuperación asistida. La [revisión independiente](revision-independiente.md) documenta la evidencia del árbol que evaluó. C-14 requiere su propia revisión para incorporar el transporte en navegador.
