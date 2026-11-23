@@ -213,6 +213,40 @@ las direcciones de loopback documentados arriba. C-12 agrega la pantalla de
 ingreso. Mientras tanto, el contrato HTTP se puede comprobar con las pruebas de
 integración del backend.
 
+## Configurar las claves de los enlaces de gestión
+
+Configurar `app.gestion-key-file` mediante `APP_GESTION_KEY_FILE` con la ruta
+absoluta a un archivo privado, fuera de cualquier checkout Git y de PostgreSQL.
+Usar un sistema de archivos POSIX con soporte para `SecureDirectoryStream`
+(por ejemplo, el sistema de archivos Linux de WSL). El archivo y su directorio
+inmediato deben pertenecer al usuario que ejecuta Java. El directorio requiere
+permisos `0700` o `0500`. El archivo debe ser regular, con permisos `0600` o
+`0400`, y su entrada no puede ser un enlace simbólico.
+
+El formato es Java Properties en UTF-8. `activa` identifica la versión que se
+usará para cifrar las próximas credenciales. Cada propiedad `clave.<versión>`
+contiene 32 bytes aleatorios codificados en Base64 estándar.
+
+```bash
+install -d -m 700 "$HOME/.local/share/odontologia-claves"
+export APP_GESTION_KEY_FILE="$HOME/.local/share/odontologia-claves/gestion.properties"
+# Ejecutar una vez para crear el archivo inicial.
+(
+  umask 077
+  set -o noclobber
+  {
+    printf 'activa=v1\nclave.v1='
+    openssl rand -base64 32
+  } > "$APP_GESTION_KEY_FILE"
+)
+```
+
+Arrancar el backend desde esa terminal. Para rotar, agregar una nueva
+`clave.<versión>` y cambiar `activa`. Conservar las claves anteriores mientras
+haya enlaces vigentes cuyo material se deba recuperar. Si el archivo falta o
+es inválido, la emisión y la composición afectadas fallan. Los enlaces ya
+emitidos se pueden seguir validando mediante su verificador en PostgreSQL.
+
 ## Comprobar PostgreSQL real
 
 Desde la raíz, con PostgreSQL de Compose en marcha:
@@ -248,5 +282,8 @@ La excepción al contrato incompleto de evidencia SDD se registró en el change.
 la coordinación por agenda se comprobaron con PostgreSQL real. La extensión
 de la excepción de evidencia a C-02 y la reproducción independiente figuran en
 sus [comprobaciones](openspec/changes/archive/2026-11-22-core-models/verification.md).
-C-03 y C-04 quedan habilitados para su diseño. C-16 integrará React en Spring
-Boot y comprobará la entrega local completa.
+
+**C-03, C-04 y C-05 archivados.** El backend incluye el acceso interno, la
+recuperación asistida de enlaces y la persistencia de intenciones e intentos.
+C-11 integra el envío por SMTP, C-14 incorpora el enlace en el navegador y C-16
+integra React en Spring Boot para comprobar la entrega local completa.
