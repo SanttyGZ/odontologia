@@ -1,6 +1,7 @@
 package dev.odontologia.comunicaciones;
 
 import java.time.Instant;
+import java.time.InstantSource;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -28,8 +29,8 @@ public final class AutorizacionDespacho {
         this.credenciales = credenciales;
     }
 
-    public Optional<Intento> autorizar(UUID agenda, UUID despacho, Instant ahora) {
-        return coordinador.write(agenda, () -> autorizarEnTransaccion(agenda, despacho, ahora));
+    public Optional<Intento> autorizar(UUID agenda, UUID despacho, InstantSource reloj) {
+        return coordinador.write(agenda, () -> autorizarEnTransaccion(agenda, despacho, reloj.instant()));
     }
 
     private Optional<Intento> autorizarEnTransaccion(UUID agenda, UUID despacho, Instant ahora) {

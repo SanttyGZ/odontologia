@@ -4,12 +4,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
+import java.time.InstantSource;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dev.odontologia.agenda.AgendaWriteCoordinator;
 import dev.odontologia.comunicaciones.AutorizacionDespacho;
@@ -87,17 +89,17 @@ class RecuperacionIntencionesTest {
                         SELECT DISTINCT despacho_id FROM intencion_notificacion WHERE evento_id = ?
                         """, UUID.class, evento.id());
                 var autorizacion = app.getBean(AutorizacionDespacho.class);
-                var primero = autorizacion.autorizar(fixture.agenda(), despacho, ahora).orElseThrow();
+                var primero = autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora)).orElseThrow();
                 assertThat(autorizacion.registrar(primero.id(), AutorizacionDespacho.Resultado.TRANSITORIO, ahora)).isTrue();
-                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, ahora.plusSeconds(59))).isEmpty();
-                var segundo = autorizacion.autorizar(fixture.agenda(), despacho, ahora.plusSeconds(60)).orElseThrow();
+                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora.plusSeconds(59)))).isEmpty();
+                var segundo = autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora.plusSeconds(60))).orElseThrow();
                 assertThat(autorizacion.registrar(segundo.id(), AutorizacionDespacho.Resultado.TRANSITORIO,
                         ahora.plusSeconds(60))).isTrue();
-                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, ahora.plusSeconds(359))).isEmpty();
-                var tercero = autorizacion.autorizar(fixture.agenda(), despacho, ahora.plusSeconds(360)).orElseThrow();
+                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora.plusSeconds(359)))).isEmpty();
+                var tercero = autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora.plusSeconds(360))).orElseThrow();
                 assertThat(autorizacion.registrar(tercero.id(), AutorizacionDespacho.Resultado.INCIERTO,
                         ahora.plusSeconds(360))).isTrue();
-                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, ahora.plusSeconds(720))).isEmpty();
+                assertThat(autorizacion.autorizar(fixture.agenda(), despacho, InstantSource.fixed(ahora.plusSeconds(720)))).isEmpty();
                 assertThatThrownBy(() -> coordinador.write(fixture.agenda(), () -> {
                     var distinto = new PreparacionAvisos.Evento(evento.id(), turno, 0,
                             "otro@example.test", ahora);
@@ -138,8 +140,8 @@ class RecuperacionIntencionesTest {
                         SELECT despacho_id FROM intencion_notificacion WHERE evento_id = ? AND tipo = 'RECORDATORIO'
                         """, UUID.class, evento.id());
                 assertThat(despachos.autorizar(fixture.agenda(), recordatorio,
-                        inicio.minusDays(1).plusHours(2).toInstant())).isEmpty();
-                var intento = despachos.autorizar(fixture.agenda(), confirmacion, ahora).orElseThrow();
+                        InstantSource.fixed(inicio.minusDays(1).plusHours(2).toInstant()))).isEmpty();
+                var intento = despachos.autorizar(fixture.agenda(), confirmacion, InstantSource.fixed(ahora)).orElseThrow();
                 var nuevo = inicio.plusHours(2);
                 coordinador.write(fixture.agenda(), () -> {
                     jdbc.update("UPDATE turno SET inicio = ?, fin = ?, revision = 1 WHERE id = ?",
@@ -154,14 +156,14 @@ class RecuperacionIntencionesTest {
                 assertThat(despachos.registrar(intento.id(), AutorizacionDespacho.Resultado.ACEPTADA_SMTP,
                         ahora.plusSeconds(2))).isTrue();
                 assertThat(despachos.recuperarEnlace(intento.id())).isEmpty();
-                assertThat(despachos.autorizar(fixture.agenda(), confirmacion, ahora.plusSeconds(120))).isEmpty();
+                assertThat(despachos.autorizar(fixture.agenda(), confirmacion, InstantSource.fixed(ahora.plusSeconds(120)))).isEmpty();
                 UUID cambio = db.jdbc.queryForObject("""
                         SELECT despacho_id FROM intencion_notificacion WHERE turno_id = ? AND tipo = 'CAMBIO'
                         """, UUID.class, turno);
-                var intentoCambio = despachos.autorizar(fixture.agenda(), cambio, ahora.plusSeconds(2)).orElseThrow();
+                var intentoCambio = despachos.autorizar(fixture.agenda(), cambio, InstantSource.fixed(ahora.plusSeconds(2))).orElseThrow();
                 assertThat(despachos.registrar(intentoCambio.id(), AutorizacionDespacho.Resultado.INCIERTO,
                         ahora.plusSeconds(3))).isTrue();
-                assertThat(despachos.autorizar(fixture.agenda(), cambio, ahora.plusSeconds(600))).isEmpty();
+                assertThat(despachos.autorizar(fixture.agenda(), cambio, InstantSource.fixed(ahora.plusSeconds(600)))).isEmpty();
                 assertThat(db.jdbc.queryForObject("""
                         SELECT count(*) FROM intento_notificacion WHERE despacho_id = ?
                         """, Long.class, cambio)).isOne();
@@ -207,7 +209,7 @@ class RecuperacionIntencionesTest {
                 UUID recordatorio = db.jdbc.queryForObject("""
                         SELECT despacho_id FROM intencion_notificacion WHERE evento_id = ? AND tipo = 'RECORDATORIO'
                         """, UUID.class, eventoReserva);
-                var intento = despachos.autorizar(fixture.agenda(), confirmacion, ahora).orElseThrow();
+                var intento = despachos.autorizar(fixture.agenda(), confirmacion, InstantSource.fixed(ahora)).orElseThrow();
                 var cancelado = inicio.minusDays(2).plusSeconds(1);
                 UUID eventoCancelacion = UUID.randomUUID();
                 coordinador.write(fixture.agenda(), () -> {
@@ -223,13 +225,13 @@ class RecuperacionIntencionesTest {
                 assertThat(despachos.recuperarEnlace(intento.id())).isEmpty();
                 assertThat(despachos.registrar(intento.id(), AutorizacionDespacho.Resultado.PERMANENTE,
                         cancelado.toInstant())).isTrue();
-                assertThat(despachos.autorizar(fixture.agenda(), recordatorio, inicio.minusDays(1).toInstant()))
+                assertThat(despachos.autorizar(fixture.agenda(), recordatorio, InstantSource.fixed(inicio.minusDays(1).toInstant())))
                         .isEmpty();
                 UUID cambio = db.jdbc.queryForObject("""
                         SELECT despacho_id FROM intencion_notificacion
                         WHERE evento_id = ? AND tipo = 'CAMBIO' AND credencial_id IS NULL AND revision = 1
                         """, UUID.class, eventoCancelacion);
-                var intentoCambio = despachos.autorizar(fixture.agenda(), cambio, cancelado.toInstant()).orElseThrow();
+                var intentoCambio = despachos.autorizar(fixture.agenda(), cambio, InstantSource.fixed(cancelado.toInstant())).orElseThrow();
                 assertThat(intentoCambio.estado()).isEqualTo("CANCELADO");
                 assertThat(intentoCambio.inicio()).isEqualTo(inicio.toInstant());
                 assertThat(intentoCambio.destinatario()).isEqualTo(destinatario);
@@ -322,7 +324,7 @@ class RecuperacionIntencionesTest {
                         esperar(dentro);
                         var segundo = threads.submit(() -> {
                             if (recuperacionPrimero) {
-                                var intento = despachos.autorizar(fixture.agenda(), recordatorio, hora).orElseThrow();
+                                var intento = despachos.autorizar(fixture.agenda(), recordatorio, InstantSource.fixed(hora)).orElseThrow();
                                 assertThat(intento.destinatario()).isEqualTo("nuevo@example.test");
                                 assertThat(intento.credencial()).isNotEqualTo(anterior);
                             } else {
@@ -361,6 +363,49 @@ class RecuperacionIntencionesTest {
                             """, String.class, recordatorio)).isEqualTo("INCIERTO");
                 }
             }
+        }
+    }
+
+    @Test
+    void noPersisteIntentoSiElAvisoVenceMientrasEsperaLaAgenda() throws Exception {
+        try (var db = new TestDatabase();
+                var app = iniciar(db, claves());
+                var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+            var fixture = CoreSchemaTest.fixture(db);
+            var coordinador = app.getBean(AgendaWriteCoordinator.class);
+            var despachos = app.getBean(AutorizacionDespacho.class);
+            UUID turno = UUID.randomUUID();
+            UUID despacho = UUID.randomUUID();
+            var inicio = START.plusYears(10);
+            var vence = inicio.minusHours(22);
+            CoreSchemaTest.insertTurn(db.jdbc, fixture, turno, inicio, inicio.plusMinutes(30), "CONFIRMADO");
+            db.jdbc.update("""
+                    INSERT INTO intencion_notificacion
+                        (id, evento_id, turno_id, revision, tipo, destinatario, programada_en, vence_en, despacho_id)
+                    VALUES (?, ?, ?, 0, 'RECORDATORIO', 'paciente@example.test', ?, ?, ?)
+                    """, despacho, UUID.randomUUID(), turno, inicio.minusDays(1), vence, despacho);
+
+            var hora = new AtomicReference<>(vence.minusSeconds(1).toInstant());
+            var bloqueada = new CountDownLatch(1);
+            var liberar = new CountDownLatch(1);
+            var bloqueo = threads.submit(() -> coordinador.write(fixture.agenda(), () -> {
+                bloqueada.countDown();
+                esperar(liberar);
+                return null;
+            }));
+            try {
+                esperar(bloqueada);
+                var intento = threads.submit(() -> despachos.autorizar(fixture.agenda(), despacho, hora::get));
+                AgendaWriteCoordinatorTest.awaitLockWait(db);
+                hora.set(vence.toInstant());
+                liberar.countDown();
+                bloqueo.get(8, TimeUnit.SECONDS);
+                assertThat(intento.get(8, TimeUnit.SECONDS)).isEmpty();
+            } finally {
+                liberar.countDown();
+            }
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intento_notificacion WHERE despacho_id = ?",
+                    Long.class, despacho)).isZero();
         }
     }
 
