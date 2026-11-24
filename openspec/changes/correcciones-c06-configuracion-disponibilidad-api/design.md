@@ -23,7 +23,7 @@ See `proposal.md` and the `availability-configuration` delta. The archived C-06 
 
 ### D-01 — Reject non-integral JSON duration values at the HTTP boundary
 
-Bind `duracionMinutos` as `BigDecimal` instead of `Integer`, then convert with exact integer semantics before invoking the C-06 service. A fractional value or an integer outside the supported Java range produces `VALIDATION_ERROR`; the service is not called and no persistence can occur. Keep the service and persisted model integer-based. This is narrower than global Jackson coercion settings, which could change unrelated APIs.
+Vincular `duracionMinutos` como un valor JSON sin tipo numérico forzado en este DTO y aceptar solo tipos Java enteros que quepan en `int` antes de invocar el servicio C-06. Los textos JSON como `"45"`, los decimales como `30.5` y los enteros fuera del rango admitido producen `VALIDATION_ERROR`; no se invoca el servicio ni se persiste el cambio. El servicio y el modelo persistido siguen usando enteros. Esta validación local evita cambiar globalmente la coerción de Jackson y afectar otras APIs.
 
 ### D-02 — Require one attention range to contain the whole confirmed turn
 
@@ -35,7 +35,7 @@ In the PostgreSQL concurrency test, hold the agenda row lock from a blocker conn
 
 ### D-04 — Preserve approved PB decisions and record their provenance
 
-No new business rule is introduced. Santiago, identificado como el usuario responsable de estas decisiones en la conversación de C-06, aprobó las alternativas seleccionadas: PB-02 (franjas del mismo día, sin duplicados ni solapes; pausas contenidas), PB-03 (inicios cada 15 minutos anclados al comienzo de cada franja; duraciones de 15–240 en múltiplos de 15), PB-05a (rechazar cambios incompatibles con turnos confirmados) y PB-05b (usar la duración configurada vigente al reprogramar). La conversación de decisión y su registro de sesión de C-06 son la evidencia de aprobación; `knowledge-base/10_preguntas_abiertas.md` ya las identifica como decisiones del usuario, y el diseño archivado D-02/D-03/D-05 junto con su spec fija el contrato resultante. Aclarar en la KB el nombre del aprobador y las referencias, sin cambiar el contenido de las reglas.
+No new business rule is introduced. Santiago, responsable del proyecto, confirmó explícitamente el 2026-11-24: «Sí, confirmo todas», en respuesta a la enumeración completa de PB-02, PB-03, PB-05a y PB-05b. La [actualización C-06 de la KB](../../../../knowledge-base/10_preguntas_abiertas.md#registro-de-aprobación-de-decisiones-c-06-2026-11-24) conserva el alcance de la confirmación y enlaza el diseño archivado D-02/D-03/D-05 y las specs AC-02/AC-03/AC-05/AC-07.
 
 ### D-05 — Mantener C-06 y actualizar desde la rama base correcta
 

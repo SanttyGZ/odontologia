@@ -2,12 +2,12 @@
 
 ## 1. Decisiones y contrato C-06
 
-- [x] 1.1 Registrar en la KB que Santiago aprobó PB-02, PB-03 y PB-05a/b, con referencias a la conversación de decisión y al diseño/spec archivados; verificar que las reglas no cambien y que `openspec validate --strict --no-interactive` pase.
+- [x] 1.1 Registrar en la KB la confirmación explícita de Santiago del 2026-11-24 para PB-02, PB-03 y PB-05a/b, con el alcance confirmado y referencias al diseño/spec archivados; verificar que las reglas no cambien y que `openspec validate --strict --no-interactive` pase.
 - [x] 1.2 Precisar en el delta `availability-configuration` el rechazo HTTP de duraciones JSON fraccionarias, la aceptación de franjas contiguas y el requisito de una sola franja para cada turno confirmado; verificar el delta con OpenSpec estricto.
 
 ## 2. Duraciones enteras en la API
 
-- [ ] 2.1 Agregar una regresión HTTP con servicio y PostgreSQL reales para POST y PUT: aceptar duraciones enteras admitidas; rechazar `30.5` con `400 VALIDATION_ERROR`; comprobar que POST no crea y PUT conserva el motivo previo; implementar conversión exacta en el DTO/controlador y ejecutar las pruebas focalizadas.
+- [ ] 2.1 Agregar una regresión HTTP con servicio y PostgreSQL reales para POST y PUT: aceptar duraciones enteras admitidas; rechazar `30.5` y `"45"` con `400 VALIDATION_ERROR`; comprobar que POST no crea y PUT conserva el motivo previo; exigir un token JSON entero en el DTO/controlador y ejecutar las pruebas focalizadas.
 
 ## 3. Cobertura por una sola franja de atención
 

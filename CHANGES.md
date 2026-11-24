@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- C-01 a C-06 están implementados, verificados y archivados. C-04 y C-05 completaron sus dependencias; C-06 tiene correcciones pendientes registradas en su seguimiento. C-07 permanece pendiente hasta cerrar esas correcciones y su revisión de contrato.
+- Los changes originales C-01 a C-06 están implementados, verificados y archivados. C-04 y C-05 completaron sus dependencias; el seguimiento correctivo de C-06 registra 2/6 tareas y está pendiente de verificación y archivo. C-07 permanece pendiente hasta cerrar ese seguimiento y su revisión de contrato.
 
 ### Gobernanza aplicable
 
@@ -313,7 +313,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 - **Estado**: `[x]` completado y archivado por OpenSpec; 9/9 tareas.
 - **Verificación**: suite unitaria e integración con PostgreSQL real, bootJar, validación estricta de OpenSpec y git diff --check pasaron; evidencia en `openspec/changes/archive/2026-11-24-configuracion-disponibilidad-api/verification.md`.
-- **Seguimiento**: revisión del contrato HTTP por los responsables de C-07 y C-12 pendiente antes de que implementen sus consumidores.
+- **Seguimiento**: `correcciones-c06-configuracion-disponibilidad-api` sigue en curso con 2/6 tareas registradas; sus correcciones requieren verificación PostgreSQL antes del archivo. La revisión del contrato HTTP por los responsables de C-07 y C-12 también sigue pendiente antes de que implementen sus consumidores.
 - **Scope**:
   - Aplicar las decisiones PB-02/PB-03/PB-05 sobre franjas, duraciones y cambios con reservas; implementar US-001/US-002/US-003 en backend mediante las familias orientativas `GET, POST, PUT /api/odontologo/motivos`, `GET, PUT /api/odontologo/horario` y `GET, POST, DELETE /api/odontologo/bloqueos`.
   - Validar nombres/duración, franjas `ATENCION`/`PAUSA` y bloqueos; aplicar autorización de C-03 y protocolo común de escritura de C-02. No incorporar borrado de motivos ni desplazamiento/cancelación automática de turnos.

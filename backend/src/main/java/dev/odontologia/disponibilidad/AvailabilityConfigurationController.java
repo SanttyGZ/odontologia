@@ -1,5 +1,6 @@
 package dev.odontologia.disponibilidad;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,11 +91,27 @@ public final class AvailabilityConfigurationController {
         if (input == null || input.duracionMinutos() == null) {
             return null;
         }
+        Object value = input.duracionMinutos();
+        if (value instanceof Integer integer) {
+            return integer;
+        }
+        if (value instanceof Short shortValue) {
+            return shortValue.intValue();
+        }
+        if (value instanceof Byte byteValue) {
+            return byteValue.intValue();
+        }
         try {
-            return input.duracionMinutos().intValueExact();
-        } catch (ArithmeticException invalidInteger) {
+            if (value instanceof Long longValue) {
+                return Math.toIntExact(longValue);
+            }
+            if (value instanceof BigInteger bigInteger) {
+                return bigInteger.intValueExact();
+            }
+        } catch (ArithmeticException outsideIntegerRange) {
             throw AvailabilityException.validation();
         }
+        throw AvailabilityException.validation();
     }
 
     private static HorarioResponse horarioResponse(List<FranjaSemanal> ranges) {

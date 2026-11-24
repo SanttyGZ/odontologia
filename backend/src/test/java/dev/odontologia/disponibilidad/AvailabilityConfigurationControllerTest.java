@@ -92,6 +92,21 @@ class AvailabilityConfigurationControllerTest {
     }
 
     @Test
+    void stringDurationsAreRejectedByBothMotivoRoutesWithoutCallingTheService() throws Exception {
+        mvc.perform(post("/api/odontologo/motivos").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Consulta\",\"duracionMinutos\":\"45\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+        mvc.perform(put("/api/odontologo/motivos/{id}", MOTIVO).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Consulta\",\"duracionMinutos\":\"45\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+
+        verify(service, org.mockito.Mockito.never()).createMotivo(anyString(), any());
+        verify(service, org.mockito.Mockito.never()).updateMotivo(any(), anyString(), any());
+    }
+
+    @Test
     void validationAndMissingResourceErrorsUseOnlyTheCommonCodeField() throws Exception {
         when(service.createMotivo(anyString(), any())).thenThrow(AvailabilityException.validation());
         when(service.updateMotivo(any(), anyString(), any())).thenThrow(AvailabilityException.motivoNotFound());

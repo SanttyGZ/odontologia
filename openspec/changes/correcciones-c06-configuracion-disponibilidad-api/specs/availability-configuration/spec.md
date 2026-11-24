@@ -18,6 +18,10 @@ La duración de un motivo SHALL recibirse como un valor JSON entero entre 15 y 2
 - **WHEN** `PUT /api/odontologo/motivos/{motivoId}` recibe una duración JSON fraccionaria, como `30.5`
 - **THEN** la API responde `400 VALIDATION_ERROR` y conserva sin cambios el motivo existente.
 
+#### Scenario: Duración enviada como texto
+- **WHEN** `POST /api/odontologo/motivos` o `PUT /api/odontologo/motivos/{motivoId}` recibe `duracionMinutos` como texto JSON, como `"45"`
+- **THEN** la API responde `400 VALIDATION_ERROR` y no crea ni modifica el motivo.
+
 #### Scenario: Duración fuera de límites o no múltiplo
 - **WHEN** se envía una duración menor que 15, mayor que 240 o que no sea múltiplo de 15
 - **THEN** la API responde `400 VALIDATION_ERROR` y no guarda el cambio.
