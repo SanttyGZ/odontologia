@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change consulta-disponibilidad-api. Update Purpose after archive.
+Especifica la consulta pública de motivos de consulta y el cálculo de horarios disponibles para reservar sin cuenta ni verificación previa (`C-07`, `US-004`, `FL-03`), aplicando la grilla de 15 minutos anclada al inicio exacto de cada franja de atención y los bordes de la ventana temporal `PB-01`.
 
 ## Requirements
 

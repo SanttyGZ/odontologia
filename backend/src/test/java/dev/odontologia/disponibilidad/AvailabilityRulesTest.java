@@ -202,6 +202,27 @@ class AvailabilityRulesTest {
         // Valid free anchored slot 10:40-11:10 local (13:40Z) -> true
         assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:40:00Z"), 30,
                 schedule, List.of(), confirmed, now, zone)).isTrue();
+
+        // Off-grid seconds or microseconds on a minute-aligned range (09:10:00) -> false
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:40:30Z"), 30,
+                schedule, List.of(), confirmed, now, zone)).isFalse();
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:40:00.123456Z"), 30,
+                schedule, List.of(), confirmed, now, zone)).isFalse();
+
+        // Range with seconds (09:00:30) and microseconds (10:00:00.250000) -> accepts exact grid only
+        var preciseSchedule = AvailabilityRules.validatedSchedule(List.of(
+                row(2, "09:00:30", "10:00:00", "ATENCION"),
+                row(2, "10:00:00.250000", "11:00:00", "ATENCION")), AGENDA);
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:00:30Z"), 30,
+                preciseSchedule, List.of(), List.of(), now, zone)).isTrue();
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:15:30Z"), 30,
+                preciseSchedule, List.of(), List.of(), now, zone)).isTrue();
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:16:00Z"), 30,
+                preciseSchedule, List.of(), List.of(), now, zone)).isFalse();
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:15:00.250000Z"), 30,
+                preciseSchedule, List.of(), List.of(), now, zone)).isTrue();
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:15:00.123456Z"), 30,
+                preciseSchedule, List.of(), List.of(), now, zone)).isFalse();
     }
 
     private static FranjaInput row(int day, String start, String end, String type) {

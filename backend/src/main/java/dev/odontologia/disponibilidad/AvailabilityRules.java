@@ -24,6 +24,7 @@ import dev.odontologia.disponibilidad.AvailabilityDtos.FranjaInput;
 
 final class AvailabilityRules {
 
+    private static final long FIFTEEN_MINUTES_NANOS = java.time.Duration.ofMinutes(15).toNanos();
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+()\\-\\s]{6,30}$");
     private static final Pattern DNI_PATTERN = Pattern.compile("^[A-Za-z0-9]{6,20}$");
@@ -204,7 +205,7 @@ final class AvailabilityRules {
         }
         validateDuration(durationMinutes);
         Instant startInstant = inicio.truncatedTo(ChronoUnit.MICROS);
-        if (!startInstant.equals(inicio) || startInstant.getEpochSecond() % 60 != 0) {
+        if (!startInstant.equals(inicio)) {
             return false;
         }
         Instant minStart = now.plus(24, ChronoUnit.HOURS);
@@ -229,8 +230,8 @@ final class AvailabilityRules {
             if (startLocal.isBefore(rangeStart) || endLocal.isAfter(rangeEnd)) {
                 return false;
             }
-            long minutesFromStart = java.time.Duration.between(rangeStart, startLocal).toMinutes();
-            return minutesFromStart % 15 == 0;
+            long diffNanos = java.time.Duration.between(rangeStart, startLocal).toNanos();
+            return diffNanos >= 0 && diffNanos % FIFTEEN_MINUTES_NANOS == 0;
         });
         if (!anchoredInOneAttention) {
             return false;

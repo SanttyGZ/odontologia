@@ -24,8 +24,8 @@
 - Búsqueda exacta en `PacienteQueries.findExact(...)` por `(consultorio_id, nombre, apellido, email, telefono, dni)`; si no hay coincidencia exacta, `PacienteQueries.insert(...)` crea un registro nuevo.
 
 ### D-02 — Regla de intervalo exacto y respuesta (`PB-08`, `PB-10`)
-- `AvailabilityRules.isSlotAvailable(...)` verifica en el `Instant` exacto (`truncatedTo(ChronoUnit.MICROS)`): `inicio` con segundos/nanos en cero, `inicio >= now + 24h`, `fechaLocal(inicio) <= fechaLocal(now) + 30 días`, contenido en una única franja `ATENCION` con paso de 15 minutos desde `franja.horaInicio()`, sin intersección con `PAUSA`, `BloqueoAgenda` ni `Turno` `CONFIRMADO`.
-- Si falla la validación de formato/rango de `inicio` (p. ej. segundos != 0 o fuera de paso de 15 min) → `400 VALIDATION_ERROR` o `409 SLOT_UNAVAILABLE` si el horario no está disponible; específicamente: datos faltantes/inválidos → `400 VALIDATION_ERROR`; motivo inexistente → `404 MOTIVO_NOT_FOUND`; horario fuera de ventana, fuera de franja, en pausa, bloqueado o ocupado → `409 SLOT_UNAVAILABLE`.
+- `AvailabilityRules.isSlotAvailable(...)` verifica en el `Instant` exacto (`truncatedTo(ChronoUnit.MICROS)`, rechazando solo sub-microsegundos): `inicio >= now + 24h`, `fechaLocal(inicio) <= fechaLocal(now) + 30 días`, contenido en una única franja `ATENCION` e igual a `franja.horaInicio() + k * 15 minutos` (conservando los segundos y microsegundos de `franja.horaInicio()` y rechazando cualquier desplazamiento fuera de la grilla), sin intersección con `PAUSA`, `BloqueoAgenda` ni `Turno` `CONFIRMADO`.
+- Si `inicio` es nulo o tiene precisión sub-microsegundo → `400 VALIDATION_ERROR`; si falta un dato obligatorio o es inválido → `400 VALIDATION_ERROR`; si el motivo no existe → `404 MOTIVO_NOT_FOUND`; si el horario queda fuera de ventana, fuera de la grilla exacta de la franja, en pausa, bloqueado o ocupado → `409 SLOT_UNAVAILABLE`.
 - Respuesta `201 Created`: `ReservaResponse(turnoId, motivoId, inicio, fin, duracionReservadaMinutos, estado, notificacionEstado)` donde `estado = "CONFIRMADO"` y `notificacionEstado = "PENDIENTE"`.
 
 ## UI Mockups

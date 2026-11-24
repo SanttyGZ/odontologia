@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change reserva-confirmada-api. Update Purpose after archive.
+Especifica la reserva pública confirmada atómicamente (`C-08`, `US-005`, `FL-04`) sin cuenta ni verificación previa, revalidando bajo bloqueo de agenda la misma grilla exacta de disponibilidad que `public-availability`, aplicando la política de pacientes `PB-04`, la prevención concurrente de solapamientos `PB-08` y el estado de notificación `PB-10`.
 
 ## Requirements
 

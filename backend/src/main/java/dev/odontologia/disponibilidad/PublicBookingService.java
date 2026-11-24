@@ -61,7 +61,7 @@ public final class PublicBookingService {
         ValidatedPatient patient = AvailabilityRules.validatedPatient(
                 input.nombre(), input.apellido(), input.email(), input.telefono(), input.dni());
         Instant inicio = input.inicio().truncatedTo(ChronoUnit.MICROS);
-        if (!inicio.equals(input.inicio()) || inicio.getEpochSecond() % 60 != 0) {
+        if (!inicio.equals(input.inicio())) {
             throw AvailabilityException.validation();
         }
 
