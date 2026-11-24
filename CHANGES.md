@@ -424,7 +424,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-12] `acceso-configuracion-web`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-24. [Diseño](openspec/changes/archive/2026-11-24-acceso-configuracion-web/design.md), [9/9 tareas](openspec/changes/archive/2026-11-24-acceso-configuracion-web/tasks.md), [verificación](openspec/changes/archive/2026-11-24-acceso-configuracion-web/verification.md), [seguimiento de revisión de PR](openspec/changes/archive/2026-11-24-correcciones-c12-acceso-configuracion-web/verification.md) y [seguimiento de horario](openspec/changes/archive/2026-11-24-correcciones-c12-horario-concurrencia-precision/verification.md). La verificación en Chromium y el recorrido autenticado completo con credencial POSIX sobre backend real quedan pendientes para entorno Linux/WSL2 o C-16 (verificado en Windows con 42/42 tests Vitest/RTL, build, proxy `/api` en vivo y visualización de ingreso).
 - **Scope**:
   - Implementar pantalla de ingreso/cierre conforme al contrato de C-03 y formularios de motivos, duraciones, horario semanal, pausas y bloqueos consumiendo C-06. Cubrir interfaz de US-001 a US-003 y la entrada a FL-01.
   - Integrar manejo de sesión/CSRF según el mecanismo aprobado, sin nuevas políticas ni desactivación global de controles; revisar explícitamente el código de integración de acceso antes de escribirlo.
