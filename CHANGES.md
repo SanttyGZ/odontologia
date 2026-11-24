@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- C-01, C-02, C-03 y C-06 están verificados y archivados. C-06 puede avanzar con C-02 y C-03 completos. C-04 puede avanzar en paralelo según su gobernanza CRITICAL.
+- C-01 a C-06 están implementados, verificados y archivados. C-04 y C-05 completaron sus dependencias; C-06 tiene correcciones pendientes registradas en su seguimiento. C-07 permanece pendiente hasta cerrar esas correcciones y su revisión de contrato.
 
 ### Gobernanza aplicable
 
@@ -273,7 +273,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-04] `credenciales-gestion-turno`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-23. [Diseño](openspec/changes/archive/2026-11-23-credenciales-gestion-turno/design.md), [5/5 tareas](openspec/changes/archive/2026-11-23-credenciales-gestion-turno/tasks.md) y [revisión independiente](openspec/changes/archive/2026-11-23-credenciales-gestion-turno/revision-independiente.md).
 - **Scope**:
   - Resolver PB-07/AT-04 mediante diseño revisable de credencial limitada a un turno, datos visibles, generación, transporte, almacenamiento, vigencia, invalidación y recuperación. Mantener reserva sin cuenta ni verificación previa de email.
   - Acordar con AT-06/PT-03 cómo conservar el material necesario para construir enlaces en emails pendientes después de reiniciar, sin exponerlos en logs o respuestas públicas. No asumir que guardar solo un verificador permite reconstruir un enlace.
@@ -290,7 +290,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-05] `intenciones-notificacion`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-23. [Diseño](openspec/changes/archive/2026-11-23-intenciones-notificacion/design.md), [5/5 tareas](openspec/changes/archive/2026-11-23-intenciones-notificacion/tasks.md) y [revisión independiente compartida](openspec/changes/archive/2026-11-23-credenciales-gestion-turno/revision-independiente.md).
 - **Scope**:
   - Resolver el contrato de PB-08 a PB-11 y AT-06/PT-03 para identidad del evento, creación de avisos, destinatario/revisión persistidos, sustitución/anulación y coordinación posterior con el emisor. No decidir tolerancias o reintentos por valores de ejemplo.
   - Añadir Notificacion y capacidades para preparar `CONFIRMACION`, `CAMBIO` y `RECORDATORIO` junto al cambio de turno, según el límite transaccional revisado; no introducir SMTP dentro de esa transacción.

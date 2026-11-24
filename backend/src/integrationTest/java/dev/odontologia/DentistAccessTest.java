@@ -7,11 +7,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import dev.odontologia.acceso.DentistCredentialFile;
+import dev.odontologia.agenda.AgendaWriteCoordinator;
+import dev.odontologia.gestion.CredencialesGestion;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,86 @@ class DentistAccessTest {
 
     @TempDir
     Path directory;
+
+    @Test
+    void recuperacionExigeSesionYCsrfYRevierteTodoAnteFallo() throws Exception {
+        Path keys = Files.createTempFile(directory, "gestion-", ".properties");
+        byte[] key = new byte[32];
+        new java.security.SecureRandom().nextBytes(key);
+        Files.writeString(keys, "activa=fixture\nclave.fixture=" + Base64.getEncoder().encodeToString(key));
+        try (var db = new TestDatabase()) {
+            var fixture = CoreSchemaTest.fixture(db);
+            try (var app = start(db, credential(), keys)) {
+            var inicio = CoreSchemaTest.START.plusYears(10);
+            UUID turno = UUID.randomUUID();
+            CoreSchemaTest.insertTurn(db.jdbc, fixture, turno, inicio, inicio.plusMinutes(30), "CONFIRMADO");
+            var credenciales = app.getBean(CredencialesGestion.class);
+            UUID anterior = app.getBean(AgendaWriteCoordinator.class).write(fixture.agenda(),
+                    () -> credenciales.emitir(turno));
+            String secreto = credenciales.recuperarParaComposicion(anterior, turno, 0).orElseThrow();
+            var path = ROOT + "/turnos/" + turno + "/recuperacion-enlace";
+            String request = """
+                    {"motivo":"Enlace perdido","metodo":"DOCUMENTO_PRESENCIAL",
+                     "verificacionConfirmada":true,"emailConfirmado":"Paciente.Anterior@example.test"}
+                    """;
+            var browser = browser(app);
+            assertError(browser.json(path, null, request), 403, "CSRF_INVALID");
+            assertError(browser.json(path, browser.csrf(), request), 401, "SESSION_REQUIRED");
+            assertThat(browser.login(USERNAME, PASSWORD, browser.csrf()).statusCode()).isEqualTo(204);
+            assertError(browser.json(path, null, request), 403, "CSRF_INVALID");
+            assertThat(browser.json(path, browser.csrf(), request.replace(":true", ":false")).statusCode())
+                    .isEqualTo(400);
+            assertThat(credenciales.validar(secreto)).isPresent();
+
+            db.jdbc.execute("ALTER TABLE intencion_notificacion ADD CONSTRAINT fallo_fixture CHECK (NOT recuperacion)");
+            assertThat(browser.json(path, browser.csrf(), request).statusCode()).isEqualTo(500);
+            assertThat(credenciales.validar(secreto)).isPresent();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM credencial_gestion WHERE turno_id = ?",
+                    Long.class, turno)).isEqualTo(1L);
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM recuperacion_enlace", Long.class)).isZero();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intencion_notificacion", Long.class)).isZero();
+            db.jdbc.execute("ALTER TABLE intencion_notificacion DROP CONSTRAINT fallo_fixture");
+
+            UUID recordatorio = UUID.randomUUID();
+            db.jdbc.update("""
+                    INSERT INTO intencion_notificacion
+                        (id, evento_id, turno_id, revision, tipo, destinatario, credencial_id,
+                         programada_en, vence_en, despacho_id)
+                    VALUES (?, ?, ?, 0, 'RECORDATORIO', 'Paciente.Anterior@example.test', ?, ?, ?, ?)
+                    """, recordatorio, UUID.randomUUID(), turno, anterior, inicio.minusDays(1),
+                    inicio.minusHours(22), recordatorio);
+            db.jdbc.update("UPDATE paciente SET email = 'edicion@example.test' WHERE id = ?", fixture.paciente());
+            assertThat(browser.json(path, browser.csrf(),
+                    request.replace("\"Paciente.Anterior@example.test\"", "null")).statusCode()).isEqualTo(400);
+            assertThat(credenciales.validar(secreto)).isPresent();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM recuperacion_enlace", Long.class)).isZero();
+
+            var response = browser.json(path, browser.csrf(), request);
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers().firstValue("Cache-Control")).hasValue("no-store");
+            assertThat(response.body()).doesNotContain(secreto, "Paciente.Anterior@example.test");
+            var referencia = UUID.fromString(JSON.readTree(response.body()).path("referencia").asString());
+            assertThat(credenciales.validar(secreto)).isEmpty();
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE evento_id = ?",
+                    String.class, referencia)).isEqualTo("Paciente.Anterior@example.test");
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM recuperacion_enlace WHERE id = ?",
+                    String.class, referencia)).isEqualTo("Paciente.Anterior@example.test");
+            assertThat(db.jdbc.queryForObject("""
+                    SELECT r.elegible AND r.destinatario = n.destinatario AND r.credencial_id = n.credencial_id
+                    FROM intencion_notificacion r CROSS JOIN intencion_notificacion n
+                    WHERE r.id = ? AND n.evento_id = ?
+                    """, Boolean.class, recordatorio, referencia)).isTrue();
+            var segunda = browser.json(path, browser.csrf(),
+                    request.replace("Paciente.Anterior@example.test", "corregido@example.test"));
+            assertThat(segunda.statusCode()).isEqualTo(200);
+            var segundoEvento = UUID.fromString(JSON.readTree(segunda.body()).path("referencia").asString());
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE evento_id = ?",
+                    String.class, segundoEvento)).isEqualTo("corregido@example.test");
+            assertThat(db.jdbc.queryForObject("SELECT destinatario FROM intencion_notificacion WHERE id = ?",
+                    String.class, recordatorio)).isEqualTo("corregido@example.test");
+            }
+        }
+    }
 
     @Test
     void restrictsTheWholeInternalFamilyAndRotatesTheSessionAndCsrf() throws Exception {
@@ -146,12 +231,18 @@ class DentistAccessTest {
     }
 
     private static ServletWebServerApplicationContext start(TestDatabase db, Path credential) {
+        return start(db, credential, null);
+    }
+
+    private static ServletWebServerApplicationContext start(TestDatabase db, Path credential, Path keys) {
         return (ServletWebServerApplicationContext) new SpringApplicationBuilder(
                 OdontologiaApplication.class, HttpFixture.class).run(
                         "--spring.datasource.url=" + db.url(), "--server.port=0", "--server.address=127.0.0.1",
                         "--app.base-url=http://127.0.0.1:5173", "--app.time-zone=Etc/UTC",
-                        "--app.consultorio-nombre=Consultorio de pruebas", "--app.odontologo-nombre=Odontólogo ficticio",
-                        "--app.dentist-credential-file=" + credential, "--spring.main.banner-mode=off");
+                        "--app.consultorio-nombre=" + (keys == null ? "Consultorio de pruebas" : "Demo"),
+                        "--app.odontologo-nombre=" + (keys == null ? "Odontólogo ficticio" : "Profesional de prueba"),
+                        "--app.dentist-credential-file=" + credential, "--spring.main.banner-mode=off",
+                        "--app.gestion-key-file=" + (keys == null ? "" : keys));
     }
 
     private static Browser browser(ServletWebServerApplicationContext app) {
@@ -193,9 +284,18 @@ class DentistAccessTest {
         }
 
         private HttpResponse<String> send(String method, String path, Token token, String data) throws Exception {
+            return send(method, path, token, data, "application/x-www-form-urlencoded");
+        }
+
+        private HttpResponse<String> json(String path, Token token, String data) throws Exception {
+            return send("POST", path, token, data, "application/json");
+        }
+
+        private HttpResponse<String> send(String method, String path, Token token, String data, String mediaType)
+                throws Exception {
             var request = HttpRequest.newBuilder(URI.create(base + path)).timeout(Duration.ofSeconds(5));
             if (data != null) {
-                request.header("Content-Type", "application/x-www-form-urlencoded");
+                request.header("Content-Type", mediaType);
             }
             if (cookie != null) {
                 request.header("Cookie", cookie);

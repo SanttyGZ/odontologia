@@ -22,16 +22,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CoreSchemaTest {
 
     @Test
-    void migratesEightTablesOnceAndDoesNotSeedRows() {
+    void migratesSchemaOnceAndDoesNotSeedRows() {
         try (var db = new TestDatabase()) {
-            assertThat(db.flyway().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(db.flyway().migrate().migrationsExecuted).isEqualTo(3);
             assertThat(db.flyway().migrate().migrationsExecuted).isZero();
             List<String> tables = db.jdbc.queryForList("""
                     SELECT tablename FROM pg_tables
                     WHERE schemaname = 'public' AND tablename <> 'flyway_schema_history'
                     """, String.class);
             assertThat(tables).containsExactlyInAnyOrder("consultorio", "odontologo", "agenda",
-                    "motivo_consulta", "franja_semanal", "bloqueo_agenda", "paciente", "turno");
+                    "motivo_consulta", "franja_semanal", "bloqueo_agenda", "paciente", "turno",
+                    "credencial_gestion", "recuperacion_enlace", "origen_notificacion",
+                    "intencion_notificacion", "intento_notificacion");
             tables.forEach(table -> assertThat(db.jdbc.queryForObject("SELECT count(*) FROM " + table, Long.class))
                     .as(table).isZero());
             assertThat(db.jdbc.queryForList("""
