@@ -25,4 +25,29 @@ public class PacienteQueries {
                         row.getString("apellido"), row.getString("email"), row.getString("telefono"),
                         row.getString("dni")), id));
     }
+
+    public Optional<Paciente> findExact(UUID consultorioId, String nombre, String apellido,
+                                        String email, String telefono, String dni) {
+        return DataAccessUtils.optionalResult(jdbc.query("""
+                SELECT id, consultorio_id, nombre, apellido, email, telefono, dni
+                FROM paciente
+                WHERE consultorio_id = ? AND nombre = ? AND apellido = ?
+                    AND email = ? AND telefono = ? AND dni = ?
+                ORDER BY id
+                LIMIT 1
+                """, (row, index) -> new Paciente(row.getObject("id", UUID.class),
+                        row.getObject("consultorio_id", UUID.class), row.getString("nombre"),
+                        row.getString("apellido"), row.getString("email"), row.getString("telefono"),
+                        row.getString("dni")), consultorioId, nombre, apellido, email, telefono, dni));
+    }
+
+    public Paciente insert(UUID consultorioId, String nombre, String apellido,
+                           String email, String telefono, String dni) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO paciente (id, consultorio_id, nombre, apellido, email, telefono, dni)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, id, consultorioId, nombre, apellido, email, telefono, dni);
+        return new Paciente(id, consultorioId, nombre, apellido, email, telefono, dni);
+    }
 }

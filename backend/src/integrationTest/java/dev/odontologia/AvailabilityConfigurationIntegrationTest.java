@@ -51,6 +51,15 @@ class AvailabilityConfigurationIntegrationTest {
                             .content("{\"nombre\":\"Cambio fraccionario\",\"duracionMinutos\":30.5}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+            mvc.perform(post("/api/odontologo/motivos").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Texto\",\"duracionMinutos\":\"45\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+            mvc.perform(put("/api/odontologo/motivos/{id}", fixture.motivo())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Cambio texto\",\"duracionMinutos\":\"45\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
 
             assertThat(db.jdbc.queryForObject("SELECT count(*) FROM motivo_consulta", Long.class))
                     .isEqualTo(countBefore);

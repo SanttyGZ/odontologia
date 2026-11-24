@@ -107,6 +107,103 @@ class AvailabilityRulesTest {
                 schedule, ZoneId.of("Etc/UTC"))).isFalse();
     }
 
+    @Test
+    void computesAnchored15MinuteSlotsExcludingContiguousBoundariesPausesBlocksAndConfirmedTurns() {
+        ZoneId zone = ZoneId.of("America/Argentina/Mendoza");
+        // Monday 2030-01-07 in Mendoza (UTC-3):
+        // Range 1: 09:10 - 10:10 (45m slots -> only 09:10-09:55 and 09:25-10:10)
+        // Range 2 (contiguous): 10:10 - 11:10 (does not combine with Range 1)
+        // Pause in Range 2: 10:25 - 10:40
+        var schedule = AvailabilityRules.validatedSchedule(List.of(
+                row(1, "09:10", "10:10", "ATENCION"),
+                row(1, "10:10", "11:10", "ATENCION"),
+                row(1, "10:25", "10:40", "PAUSA")), AGENDA);
+        // Confirmed turn 09:25-09:55 local (12:25-12:55Z) -> blocks 09:10-09:55 and 09:25-10:10
+        var confirmed = List.of(turn("2030-01-07T12:25:00Z", "2030-01-07T12:55:00Z"));
+        // Block 10:55-11:10 local (13:55-14:10Z) -> blocks 10:25-11:10
+        var blocks = List.of(new dev.odontologia.agenda.BloqueoAgenda(UUID.randomUUID(), AGENDA,
+                Instant.parse("2030-01-07T13:55:00Z"), Instant.parse("2030-01-07T14:10:00Z"), null));
+
+        var slots = AvailabilityRules.availableSlots(45, schedule, blocks, confirmed,
+                java.time.LocalDate.of(2030, 1, 7), java.time.LocalDate.of(2030, 1, 7),
+                Instant.parse("2030-01-05T12:00:00Z"), zone);
+        assertThat(slots).isEmpty();
+
+        // With 30-min duration and no confirmed turn, 09:10-09:40, 09:25-09:55, 09:40-10:10 are free,
+        // 09:55-10:25 is excluded (crosses 10:10 boundary), and 10:10-10:40 is excluded (pause 10:25-10:40).
+        // 10:40-11:10 is excluded by block 10:55-11:10.
+        var thirtyMinSlots = AvailabilityRules.availableSlots(30, schedule, blocks, List.of(),
+                java.time.LocalDate.of(2030, 1, 7), java.time.LocalDate.of(2030, 1, 7),
+                Instant.parse("2030-01-05T12:00:00Z"), zone);
+        assertThat(thirtyMinSlots).containsExactly(
+                new AvailabilityRules.Slot(Instant.parse("2030-01-07T12:10:00Z"), Instant.parse("2030-01-07T12:40:00Z")),
+                new AvailabilityRules.Slot(Instant.parse("2030-01-07T12:25:00Z"), Instant.parse("2030-01-07T12:55:00Z")),
+                new AvailabilityRules.Slot(Instant.parse("2030-01-07T12:40:00Z"), Instant.parse("2030-01-07T13:10:00Z")));
+    }
+
+    @Test
+    void enforcesInclusive24HourLowerBoundAndInclusive30CalendarDayUpperBound() {
+        ZoneId zone = ZoneId.of("America/Argentina/Mendoza");
+        // now = 2030-01-07T12:00:00Z (09:00 local Monday).
+        // 24h later = 2030-01-08T12:00:00Z (09:00 local Tuesday).
+        // 30 calendar days later = 2030-02-06 (Wednesday).
+        var schedule = AvailabilityRules.validatedSchedule(List.of(
+                row(2, "08:45", "09:45", "ATENCION"),
+                row(3, "08:45", "09:45", "ATENCION")), AGENDA);
+        Instant now = Instant.parse("2030-01-07T12:00:00Z");
+
+        var slots = AvailabilityRules.availableSlots(30, schedule, List.of(), List.of(),
+                java.time.LocalDate.of(2030, 1, 8), java.time.LocalDate.of(2030, 2, 10), now, zone);
+
+        // On 2030-01-08: 08:45 local (11:45Z) < now+24h -> excluded; 09:00 local (12:00Z) == now+24h -> included.
+        assertThat(slots).first().isEqualTo(
+                new AvailabilityRules.Slot(Instant.parse("2030-01-08T12:00:00Z"), Instant.parse("2030-01-08T12:30:00Z")));
+        // Last day included must be 2030-02-06 (exact 30th calendar day, not 2030-02-12).
+        assertThat(slots).last().isEqualTo(
+                new AvailabilityRules.Slot(Instant.parse("2030-02-06T12:15:00Z"), Instant.parse("2030-02-06T12:45:00Z")));
+    }
+
+    @Test
+    void validatesAndNormalizesPatientFieldsAndRejectsMissingOrInvalidFormats() {
+        var patient = AvailabilityRules.validatedPatient(" Ana ", " Perez ", "ANA@Example.COM ", " +54 261-555-1234 ",
+                " 30123456 ");
+        assertThat(patient.nombre()).isEqualTo("Ana");
+        assertThat(patient.apellido()).isEqualTo("Perez");
+        assertThat(patient.email()).isEqualTo("ana@example.com");
+        assertThat(patient.telefono()).isEqualTo("+54 261-555-1234");
+        assertThat(patient.dni()).isEqualTo("30123456");
+
+        assertValidation(() -> AvailabilityRules.validatedPatient("", "Perez", "a@b.com", "2615551234", "30123456"));
+        assertValidation(() -> AvailabilityRules.validatedPatient("Ana", " ", "a@b.com", "2615551234", "30123456"));
+        assertValidation(() -> AvailabilityRules.validatedPatient("Ana", "Perez", "invalido", "2615551234", "30123456"));
+        assertValidation(() -> AvailabilityRules.validatedPatient("Ana", "Perez", "a@b.com", "123", "30123456"));
+        assertValidation(() -> AvailabilityRules.validatedPatient("Ana", "Perez", "a@b.com", "2615551234", "12 345"));
+    }
+
+    @Test
+    void checksExactPointSlotAvailabilityAgainstWindowAnchorContiguousRangesAndOccupation() {
+        ZoneId zone = ZoneId.of("America/Argentina/Mendoza");
+        Instant now = Instant.parse("2030-01-07T12:00:00Z"); // Monday 09:00 local
+        var schedule = AvailabilityRules.validatedSchedule(List.of(
+                row(2, "09:10", "10:10", "ATENCION"),
+                row(2, "10:10", "11:10", "ATENCION"),
+                row(2, "10:25", "10:40", "PAUSA")), AGENDA);
+        var confirmed = List.of(turn("2030-01-08T12:25:00Z", "2030-01-08T12:55:00Z")); // 09:25-09:55 local
+
+        // Exact anchored start 09:10-09:40 local (12:10Z) hits confirmed 09:25-09:55 -> false
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:10:00Z"), 30,
+                schedule, List.of(), confirmed, now, zone)).isFalse();
+        // Contiguous after confirmed: 09:55-10:25 local crosses 10:10 boundary -> false
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:55:00Z"), 30,
+                schedule, List.of(), confirmed, now, zone)).isFalse();
+        // Unanchored 09:15 local -> false
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T12:15:00Z"), 30,
+                schedule, List.of(), List.of(), now, zone)).isFalse();
+        // Valid free anchored slot 10:40-11:10 local (13:40Z) -> true
+        assertThat(AvailabilityRules.isSlotAvailable(Instant.parse("2030-01-08T13:40:00Z"), 30,
+                schedule, List.of(), confirmed, now, zone)).isTrue();
+    }
+
     private static FranjaInput row(int day, String start, String end, String type) {
         return new FranjaInput(UUID.randomUUID(), day, LocalTime.parse(start), LocalTime.parse(end), type);
     }
