@@ -31,6 +31,14 @@ public class AgendaQueries {
         this.jdbc = jdbc;
     }
 
+    public List<MotivoConsulta> motivos(UUID agendaId) {
+        return jdbc.query("""
+                SELECT id, agenda_id, nombre, duracion_minutos
+                FROM motivo_consulta WHERE agenda_id = ? ORDER BY nombre, id
+                """, (row, index) -> new MotivoConsulta(row.getObject("id", UUID.class),
+                        row.getObject("agenda_id", UUID.class), row.getString("nombre"), row.getInt("duracion_minutos")),
+                agendaId);
+    }
     public Optional<MotivoConsulta> findMotivo(UUID agendaId, UUID motivoId) {
         return DataAccessUtils.optionalResult(jdbc.query("""
                 SELECT id, agenda_id, nombre, duracion_minutos
@@ -59,10 +67,21 @@ public class AgendaQueries {
                         row.getString("descripcion")), agendaId, atUtc(fin), atUtc(inicio));
     }
 
+    public List<BloqueoAgenda> bloqueos(UUID agendaId) {
+        return jdbc.query("""
+                SELECT id, agenda_id, inicio, fin, descripcion
+                FROM bloqueo_agenda WHERE agenda_id = ? ORDER BY inicio, id
+                """, (row, index) -> new BloqueoAgenda(row.getObject("id", UUID.class),
+                        row.getObject("agenda_id", UUID.class), instant(row, "inicio"), instant(row, "fin"),
+                        row.getString("descripcion")), agendaId);
+    }
     public Optional<Turno> findTurno(UUID agendaId, UUID turnoId) {
         return DataAccessUtils.optionalResult(jdbc.query(TURNOS + "AND id = ?", AgendaQueries::readTurno, agendaId, turnoId));
     }
 
+    public List<Turno> confirmados(UUID agendaId) {
+        return jdbc.query(TURNOS + "AND estado = 'CONFIRMADO' ORDER BY inicio, id", AgendaQueries::readTurno, agendaId);
+    }
     public List<Turno> ocupados(UUID agendaId, Instant inicio, Instant fin) {
         return jdbc.query(TURNOS + "AND estado = 'CONFIRMADO' AND inicio < ? AND fin > ? ORDER BY inicio, id",
                 AgendaQueries::readTurno, agendaId, atUtc(fin), atUtc(inicio));

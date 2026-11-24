@@ -33,15 +33,15 @@ Las tres diferencias siguientes son aclaraciones históricas resueltas, no contr
 
 ## Preguntas abiertas de negocio — priorizadas
 
-Los códigos PB conservan exactamente los identificadores del [documento 05](05_reglas_de_negocio.md). Todas continúan pendientes. “Alta” significa antes de implementar o aceptar el comportamiento afectado; no exige resolverlas durante la redacción.
+Los códigos PB conservan exactamente los identificadores del [documento 05](05_reglas_de_negocio.md). El estado se indica por fila. PB-02, PB-03 y PB-05 se resolvieron para C-06; las demás siguen abiertas. “Alta” significa antes de implementar o aceptar el comportamiento afectado; no exige resolverlas durante la redacción.
 
 | Código | Prioridad | Pregunta | Bloquea | Decisor |
 |---|---|---|---|---|
 | PB-01 | Alta | ¿Son inclusivos 24 horas y 30 días? ¿30 días calendario o duración equivalente, y cuándo se evalúa el límite? | Bordes de reserva y autogestión; US-004, US-005, US-008 y US-009. | Usuario; agente presenta alternativas. |
-| PB-02 | Alta | ¿Qué zona usa el consultorio? ¿Se admiten franjas nocturnas, repetidas o superpuestas? | Disponibilidad, agenda y tiempos de envío. | Usuario; agente analiza efectos. |
-| PB-03 | Alta | ¿Con qué paso se ofrecen inicios y qué límites o múltiplos tienen las duraciones? | Generación de opciones de reserva. | Usuario. |
+| PB-02 | Resuelta en C-02/C-06 | ¿Qué zona usa el consultorio? ¿Se admiten franjas nocturnas, repetidas o superpuestas? | Zona fijada en C-02; C-06 usa franjas del mismo día, sin duplicados ni solapes. No bloquea C-06. | Usuario; decisiones registradas en C-02 y C-06. |
+| PB-03 | Resuelta en C-06 | ¿Con qué paso se ofrecen inicios y qué límites o múltiplos tienen las duraciones? | C-06 fija inicios cada 15 minutos, anclados al comienzo de cada franja, y duraciones múltiplos de 15 entre 15 y 240 minutos; C-07 consume esa regla. | Usuario; decisión registrada en C-06. |
 | PB-04 | Alta | ¿Cómo crear o reutilizar pacientes, validar campos y corregir errores sin sobrescribir por una coincidencia de DNI o email? | Reserva, persistencia de paciente y destinatarios. | Usuario; agente propone política. |
-| PB-05 | Alta | ¿Qué pasa al cambiar horario, motivo o bloqueos con turnos existentes? ¿Qué duración se usa al reprogramar tras cambiar el motivo? | Configuración, conflictos y reprogramación. | Usuario. |
+| PB-05 | Resuelta en C-06 | ¿Qué pasa al cambiar horario, motivo o bloqueos con turnos existentes? ¿Qué duración se usa al reprogramar tras cambiar el motivo? | C-06 rechaza cambios que afecten turnos confirmados; al reprogramar se usa la duración actualmente configurada. | Usuario; decisión registrada en C-06. |
 | PB-06 | Media | ¿Se incorpora alta manual? ¿Qué cancelaciones o reprogramaciones puede hacer el odontólogo fuera del plazo y cómo se lo contacta? | Alcance de operaciones manuales y contacto operativo. | Usuario; validar con odontólogo cuando sea posible. |
 | PB-07 | Alta | ¿Cuándo vence o se invalida un enlace, qué datos muestra y cómo recuperar acceso tras pérdida o email incorrecto? | Autogestión y ciclo de credenciales. | Usuario sobre experiencia; agente sobre mecanismo. |
 | PB-08 | Alta | ¿Qué respuesta corresponde a solicitudes repetidas, cancelación ya hecha, reactivación y cambios simultáneos? | Resultados consistentes y tratamiento de repetición. | Usuario sobre política; agente sobre integridad. |
@@ -67,7 +67,9 @@ Fuente: aprobación D-01 a D-05 y decisiones posteriores en el
 [diseño archivado](../openspec/changes/archive/2026-11-22-foundation-setup/design.md).
 La tabla conserva las preguntas originales para distinguir el cierre parcial.
 
-**Actualización C-02 (2026-11-22).** AT-02 se resolvió para el esquema inicial con Spring JDBC y Flyway. AT-05 se concretó con el coordinador de escritura y la exclusión en PostgreSQL. AT-08 y la parte de zona de PB-02 se concretaron para la demo con `America/Argentina/Mendoza` (UTC−3), Grupo13 y Carlos Garcia. Franjas nocturnas y solapamientos quedan para C-06. El esquema admite pacientes con datos repetidos y la política de creación o reutilización de PB-04 se decide en C-08. Ver el [diseño archivado](../openspec/changes/archive/2026-11-22-core-models/design.md).
+**Actualización C-02 (2026-11-22).** AT-02 se resolvió para el esquema inicial con Spring JDBC y Flyway. AT-05 se concretó con el coordinador de escritura y la exclusión en PostgreSQL. AT-08 y la parte de zona de PB-02 se concretaron para la demo con `America/Argentina/Mendoza` (UTC−3), Grupo13 y Carlos Garcia. Franjas nocturnas y solapamientos quedaron para C-06. El esquema admite pacientes con datos repetidos y la política de creación o reutilización de PB-04 se decide en C-08. Ver el [diseño archivado](../openspec/changes/archive/2026-11-22-core-models/design.md).
+
+**Actualización C-06.** PB-02, PB-03 y PB-05 quedaron resueltas; sus reglas y evidencia están en el [change archivado](../openspec/changes/archive/2026-11-24-configuracion-disponibilidad-api/). PB-01 permanece abierta para definir ventana temporal y límites antes de C-07/C-08/C-09.
 
 | Código | Prioridad | Pregunta | Bloquea | Decisor |
 |---|---|---|---|---|
@@ -99,7 +101,7 @@ Las variables de 08 son un contrato propuesto. No hay configuración de datos, c
 ## Orden recomendado de resolución
 
 1. Para preparar el proyecto: AT-01, AT-02 y AT-08; AP-03 para poner fechas reales.
-2. Antes de construir disponibilidad y reserva: PB-01 a PB-05 y AT-05; definir PB-08 para las operaciones que se implementen.
+2. Antes de C-07/C-08/C-09: resolver PB-01 para ventana temporal y límites; PB-02, PB-03 y PB-05 ya quedaron resueltas en C-06. Definir PB-08 para las operaciones que se implementen.
 3. C-03 resolvió AT-03 para el acceso interno. Antes de autogestión, resolver PB-07 y AT-04 con revisión del diseño y autorización de código CRITICAL.
 4. Antes de completar correo: PB-09 a PB-11, AT-06 y AT-07; no basta con sustituir emails reales por una simulación para dar por cumplida la entrega acordada.
 5. Antes de trabajo visual: AT-11. Antes de datos reales: PB-12 y AT-09. La entrevista de AP-04 debe buscarse en paralelo cuando exista acceso a un profesional.
