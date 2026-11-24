@@ -3,6 +3,7 @@ package dev.odontologia;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,17 +13,89 @@ import dev.odontologia.agenda.BloqueoAgenda;
 import dev.odontologia.agenda.FranjaSemanal;
 import dev.odontologia.agenda.MotivoConsulta;
 import dev.odontologia.disponibilidad.AvailabilityConfigurationService;
+import dev.odontologia.disponibilidad.AvailabilityConfigurationController;
 import dev.odontologia.disponibilidad.AvailabilityDtos.FranjaInput;
 import dev.odontologia.disponibilidad.AvailabilityException;
+import dev.odontologia.disponibilidad.AvailabilityErrorAdvice;
 import dev.odontologia.consultorio.ConsultorioQueries;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.JdbcTransactionManager;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class AvailabilityConfigurationIntegrationTest {
+
+    @Test
+    void motivoRoutesRejectFractionalDurationsAndPreserveDatabaseState() throws Exception {
+        try (var db = new TestDatabase()) {
+            var fixture = CoreSchemaTest.fixture(db);
+            MockMvc mvc = mvc(service(db));
+            long countBefore = db.jdbc.queryForObject("SELECT count(*) FROM motivo_consulta", Long.class);
+            var motiveBefore = db.jdbc.queryForMap("SELECT * FROM motivo_consulta WHERE id = ?", fixture.motivo());
+
+            mvc.perform(post("/api/odontologo/motivos").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Fraccionario\",\"duracionMinutos\":30.5}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+            mvc.perform(put("/api/odontologo/motivos/{id}", fixture.motivo())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Cambio fraccionario\",\"duracionMinutos\":30.5}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"));
+
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM motivo_consulta", Long.class))
+                    .isEqualTo(countBefore);
+            assertThat(db.jdbc.queryForMap("SELECT * FROM motivo_consulta WHERE id = ?", fixture.motivo()))
+                    .isEqualTo(motiveBefore);
+
+            mvc.perform(post("/api/odontologo/motivos").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Motivo válido\",\"duracionMinutos\":45}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.duracionMinutos").value(45));
+            mvc.perform(put("/api/odontologo/motivos/{id}", fixture.motivo())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nombre\":\"Motivo actualizado\",\"duracionMinutos\":60}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.duracionMinutos").value(60));
+        }
+    }
+
+    @Test
+    void rejectsTurnCrossingContiguousAttentionWithHttpConflictAndPreservesScheduleAndTurn() throws Exception {
+        try (var db = new TestDatabase()) {
+            var fixture = CoreSchemaTest.fixture(db);
+            var service = service(db);
+            service.replaceHorario(List.of(attention(2, "12:00", "14:00")));
+            CoreSchemaTest.insertTurn(db.jdbc, fixture, UUID.randomUUID(), CoreSchemaTest.START,
+                    CoreSchemaTest.START.plusMinutes(30), "CONFIRMADO");
+            var scheduleBefore = new AgendaQueries(db.jdbc).franjas(fixture.agenda());
+            var turnBefore = db.jdbc.queryForMap("SELECT * FROM turno WHERE agenda_id = ?", fixture.agenda());
+            int day = CoreSchemaTest.START.toInstant().atZone(ZoneOffset.UTC).getDayOfWeek().getValue();
+            String ranges = "["
+                    + "{\"id\":\"" + UUID.randomUUID() + "\",\"diaSemana\":" + day
+                    + ",\"horaInicio\":\"12:00:00\",\"horaFin\":\"13:15:00\",\"tipo\":\"ATENCION\"},"
+                    + "{\"id\":\"" + UUID.randomUUID() + "\",\"diaSemana\":" + day
+                    + ",\"horaInicio\":\"13:15:00\",\"horaFin\":\"14:00:00\",\"tipo\":\"ATENCION\"}]";
+
+            mvc(service).perform(put("/api/odontologo/horario").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"franjas\":" + ranges + "}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONFIGURATION_CONFLICT"));
+
+            assertThat(new AgendaQueries(db.jdbc).franjas(fixture.agenda())).containsExactlyElementsOf(scheduleBefore);
+            assertThat(db.jdbc.queryForMap("SELECT * FROM turno WHERE agenda_id = ?", fixture.agenda()))
+                    .isEqualTo(turnBefore);
+        }
+    }
 
     @Test
     void rejectsSchedulePauseAndPartialBlockConflictsWithoutChangingConfirmedTurns() {
@@ -107,6 +180,11 @@ class AvailabilityConfigurationIntegrationTest {
         return new AvailabilityConfigurationService(db.jdbc, new AgendaQueries(db.jdbc),
                 new ConsultorioQueries(db.jdbc), new AgendaWriteCoordinator(db.jdbc,
                         new JdbcTransactionManager(db.dataSource())));
+    }
+
+    private static MockMvc mvc(AvailabilityConfigurationService service) {
+        return MockMvcBuilders.standaloneSetup(new AvailabilityConfigurationController(service))
+                .setControllerAdvice(new AvailabilityErrorAdvice()).build();
     }
 
     private static FranjaInput attention(int day, String start, String end) {

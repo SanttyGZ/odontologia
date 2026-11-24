@@ -2,6 +2,7 @@ package dev.odontologia.disponibilidad;
 
 import java.time.Instant;
 import java.time.LocalTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +13,7 @@ public final class AvailabilityDtos {
     private AvailabilityDtos() {
     }
 
-    public record MotivoInput(String nombre, Integer duracionMinutos) {
+    public record MotivoInput(String nombre, BigDecimal duracionMinutos) {
     }
 
     public record MotivoResponse(UUID id, String nombre, int duracionMinutos) {

@@ -81,13 +81,13 @@ class AvailabilityRulesTest {
     }
 
     @Test
-    void treatsAdjacentAttentionAsContinuousButNeverAllowsAConfirmedTurnAcrossAPause() {
+    void keepsAdjacentAttentionConfigurableButRequiresOneRangeToContainAConfirmedTurn() {
         var adjacent = AvailabilityRules.validatedSchedule(List.of(
                 row(1, "09:00", "10:00", "ATENCION"),
                 row(1, "10:00", "11:00", "ATENCION")), AGENDA);
         var crossingBoundary = turn("2030-01-07T09:30:00Z", "2030-01-07T10:30:00Z");
         assertThat(AvailabilityRules.coversConfirmedTurn(crossingBoundary, adjacent, ZoneId.of("Etc/UTC")))
-                .isTrue();
+                .isFalse();
 
         var withBreak = AvailabilityRules.validatedSchedule(List.of(
                 row(1, "09:00", "11:00", "ATENCION"),

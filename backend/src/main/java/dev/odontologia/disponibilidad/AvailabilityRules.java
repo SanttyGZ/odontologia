@@ -105,22 +105,8 @@ final class AvailabilityRules {
             return false;
         }
 
-        LocalTime cursor = startTime;
-        for (FranjaSemanal range : daily.stream()
-                .filter(row -> row.tipo() == FranjaSemanal.Tipo.ATENCION)
-                .sorted(Comparator.comparing(FranjaSemanal::horaInicio)).toList()) {
-            if (!range.horaFin().isAfter(cursor)) {
-                continue;
-            }
-            if (range.horaInicio().isAfter(cursor)) {
-                return false;
-            }
-            if (!range.horaFin().isBefore(endTime)) {
-                return true;
-            }
-            cursor = range.horaFin();
-        }
-        return false;
+        return daily.stream().filter(range -> range.tipo() == FranjaSemanal.Tipo.ATENCION)
+                .anyMatch(range -> !startTime.isBefore(range.horaInicio()) && !endTime.isAfter(range.horaFin()));
     }
 
     private static List<FranjaSemanal> day(List<FranjaSemanal> schedule, DayOfWeek day) {

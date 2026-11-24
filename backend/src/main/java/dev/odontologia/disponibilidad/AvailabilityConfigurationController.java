@@ -42,7 +42,7 @@ public final class AvailabilityConfigurationController {
     @PostMapping("/motivos")
     public ResponseEntity<MotivoResponse> createMotivo(@RequestBody(required = false) MotivoInput input) {
         MotivoResponse response = motivoResponse(service.createMotivo(
-                input == null ? null : input.nombre(), input == null ? null : input.duracionMinutos()));
+                input == null ? null : input.nombre(), duration(input)));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -50,7 +50,7 @@ public final class AvailabilityConfigurationController {
     public MotivoResponse updateMotivo(@PathVariable UUID motivoId,
                                        @RequestBody(required = false) MotivoInput input) {
         return motivoResponse(service.updateMotivo(motivoId,
-                input == null ? null : input.nombre(), input == null ? null : input.duracionMinutos()));
+                input == null ? null : input.nombre(), duration(input)));
     }
 
     @GetMapping("/horario")
@@ -84,6 +84,17 @@ public final class AvailabilityConfigurationController {
 
     private static MotivoResponse motivoResponse(MotivoConsulta value) {
         return new MotivoResponse(value.id(), value.nombre(), value.duracionMinutos());
+    }
+
+    private static Integer duration(MotivoInput input) {
+        if (input == null || input.duracionMinutos() == null) {
+            return null;
+        }
+        try {
+            return input.duracionMinutos().intValueExact();
+        } catch (ArithmeticException invalidInteger) {
+            throw AvailabilityException.validation();
+        }
     }
 
     private static HorarioResponse horarioResponse(List<FranjaSemanal> ranges) {

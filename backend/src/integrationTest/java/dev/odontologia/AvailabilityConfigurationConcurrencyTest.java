@@ -1,6 +1,5 @@
 package dev.odontologia;
 
-import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -72,17 +71,20 @@ class AvailabilityConfigurationConcurrencyTest {
             var agendaQueries = new AgendaQueries(db.jdbc);
             service.replaceHorario(List.of(attention("12:00", "14:00")));
             var coordinator = coordinator(db);
-            var configurationWritten = new CountDownLatch(1);
-            var release = new CountDownLatch(1);
-            var configuration = threads.submit(() -> coordinator.write(fixture.agenda(), () -> {
-                db.jdbc.update("DELETE FROM franja_semanal WHERE agenda_id = ?", fixture.agenda());
-                insertRange(db, fixture.agenda(), attention("13:15", "14:00"));
-                configurationWritten.countDown();
-                await(release);
+            var blockerAcquired = new CountDownLatch(1);
+            var releaseBlocker = new CountDownLatch(1);
+            var blocker = threads.submit(() -> coordinator.write(fixture.agenda(), () -> {
+                blockerAcquired.countDown();
+                await(releaseBlocker);
                 return null;
             }));
+            assertThat(blockerAcquired.await(4, TimeUnit.SECONDS)).isTrue();
+            var configuration = threads.submit(() -> {
+                service.replaceHorario(List.of(attention("13:15", "14:00")));
+                return "SAVED";
+            });
             try {
-                assertThat(configurationWritten.await(4, TimeUnit.SECONDS)).isTrue();
+                AgendaWriteCoordinatorTest.awaitLockWait(db);
                 var reservation = threads.submit(() -> coordinator.write(fixture.agenda(), () -> {
                     var appointmentStart = CoreSchemaTest.START.toInstant().atZone(ZoneOffset.UTC);
                     var appointmentEnd = CoreSchemaTest.START.plusMinutes(30).toInstant().atZone(ZoneOffset.UTC);
@@ -98,15 +100,16 @@ class AvailabilityConfigurationConcurrencyTest {
                             CoreSchemaTest.START.plusMinutes(30), "CONFIRMADO");
                     return "CONFIRMED";
                 }));
-                AgendaWriteCoordinatorTest.awaitLockWait(db);
+                awaitLockWaiters(db, 2);
                 assertThat(reservation).isNotDone();
-                release.countDown();
-                configuration.get(8, TimeUnit.SECONDS);
+                releaseBlocker.countDown();
+                blocker.get(8, TimeUnit.SECONDS);
+                assertThat(configuration.get(8, TimeUnit.SECONDS)).isEqualTo("SAVED");
                 assertThat(reservation.get(8, TimeUnit.SECONDS)).isEqualTo("OUTSIDE_AVAILABILITY");
                 assertThat(db.jdbc.queryForObject("SELECT count(*) FROM turno WHERE estado = 'CONFIRMADO'",
                         Long.class)).isZero();
             } finally {
-                release.countDown();
+                releaseBlocker.countDown();
             }
         }
     }
@@ -128,14 +131,6 @@ class AvailabilityConfigurationConcurrencyTest {
         return new FranjaInput(UUID.randomUUID(), day, LocalTime.parse(start), LocalTime.parse(end), "ATENCION");
     }
 
-    private static void insertRange(TestDatabase db, UUID agendaId, FranjaInput range) {
-        db.jdbc.update("""
-                INSERT INTO franja_semanal (id, agenda_id, dia_semana, hora_inicio, hora_fin, tipo)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """, range.id(), agendaId, DayOfWeek.of(range.diaSemana()).getValue(), range.horaInicio(),
-                range.horaFin(), range.tipo());
-    }
-
     private static void await(CountDownLatch latch) {
         try {
             if (!latch.await(7, TimeUnit.SECONDS)) {
@@ -145,5 +140,20 @@ class AvailabilityConfigurationConcurrencyTest {
             Thread.currentThread().interrupt();
             throw new AssertionError("Prueba interrumpida", interrupted);
         }
+    }
+
+    private static void awaitLockWaiters(TestDatabase db, int expected) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(1_600);
+        while (System.nanoTime() < deadline) {
+            Integer waiting = db.jdbc.queryForObject("""
+                    SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()
+                        AND wait_event_type = 'Lock'
+                    """, Integer.class);
+            if (waiting != null && waiting >= expected) {
+                return;
+            }
+            Thread.sleep(15);
+        }
+        throw new AssertionError("PostgreSQL no mostró " + expected + " transacciones esperando el bloqueo");
     }
 }

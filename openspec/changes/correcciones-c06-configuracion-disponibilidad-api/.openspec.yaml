@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-24
+goal: Reject non-integer motif durations, require confirmed turns to fit a
+  single attention range, and verify configuration-first concurrency through the
+  real service.
