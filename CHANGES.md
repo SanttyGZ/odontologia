@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- C-01 a C-05 están verificados y archivados. C-06 puede avanzar con C-02 y C-03 completos. Los cambios consumidores de C-04/C-05 conservan sus demás dependencias.
+- Los changes originales C-01 a C-06 están implementados, verificados y archivados. C-04 y C-05 completaron sus dependencias; el seguimiento correctivo de C-06 registra 2/6 tareas y está pendiente de verificación y archivo. C-07 permanece pendiente hasta cerrar ese seguimiento y su revisión de contrato.
 
 ### Gobernanza aplicable
 
@@ -67,13 +67,12 @@ Cada US tiene cuatro CA-US en el documento 06; la columna de cierre incluye la v
 
 ### Decisiones que habilitan la implementación
 
-AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 para la demostración local se concretaron en C-01 y C-02. AT-11 ya estaba resuelto. Las tablas siguientes identifican los alcances y pendientes restantes. Consultar las actualizaciones en `knowledge-base/10_preguntas_abiertas.md`.
+AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 para la demostración local se concretaron en C-01 y C-02. AT-11 ya estaba resuelto. C-06 resolvió PB-02 (franjas del mismo día, sin duplicados ni solapes; pausas dentro de una franja), PB-03 (inicios cada 15 minutos anclados al comienzo de cada franja y duraciones múltiplos de 15 entre 15 y 240 minutos) y PB-05 (rechazar cambios que afecten turnos confirmados; usar la duración actualmente configurada al reprogramar). PB-01 permanece pendiente para C-07/C-08/C-09. Las tablas siguientes identifican los alcances y pendientes restantes. Consultar las actualizaciones en `knowledge-base/10_preguntas_abiertas.md`.
 
 | Pendiente | Resolver antes de | Límite que debe quedar explícito |
 |---|---|---|
-| PB-01, PB-02, PB-03 | C-02 para zona/tiempo, C-06/C-07 y usos en C-08/C-09/C-11 | Extremos 24 h/30 días, calendario, zona, medianoche, franjas y paso; no inferir de la máquina ni imponer múltiplos. |
+| PB-01 | C-07/C-08/C-09 para ventana temporal, zona, calendario y límites de reserva; PB-01 ya no bloquea C-06 | Resolver extremos 24 h/30 días, zona, calendario, medianoche y franjas antes de calcular o aceptar reservas; no inferir de la máquina. |
 | PB-04 | C-02 para esquema de pacientes y C-08 | Crear/reutilizar, validar y corregir; no añadir unicidad natural, fusión ni sobrescritura automática por DNI/email. |
-| PB-05 | C-06 y C-09 | Cambios con reservas y duración al reprogramar; no cancelar ni mover reservas silenciosamente. |
 | PB-06 | C-09 y C-14 para el contacto fuera de plazo | Definir contacto operativo; no incluir alta manual ni excepciones del odontólogo sin ampliar el alcance expresamente. |
 | PB-07 | C-04, C-09 y C-14 | Vigencia, invalidación, datos visibles y recuperación; sin cuenta ni verificación previa obligatoria del email. |
 | PB-08 | C-05, C-08 y C-09 | Repeticiones, resultados inciertos y cambios simultáneos; no inferir reactivación de cancelados. |
@@ -312,9 +311,11 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-06] `configuracion-disponibilidad-api`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado por OpenSpec; 9/9 tareas.
+- **Verificación**: suite unitaria e integración con PostgreSQL real, bootJar, validación estricta de OpenSpec y git diff --check pasaron; evidencia en `openspec/changes/archive/2026-11-24-configuracion-disponibilidad-api/verification.md`.
+- **Seguimiento**: `correcciones-c06-configuracion-disponibilidad-api` sigue en curso con 2/6 tareas registradas; sus correcciones requieren verificación PostgreSQL antes del archivo. La revisión del contrato HTTP por los responsables de C-07 y C-12 también sigue pendiente antes de que implementen sus consumidores.
 - **Scope**:
-  - Precisar PB-02/PB-03/PB-05 para franjas, duraciones y cambios con reservas; implementar US-001/US-002/US-003 en backend mediante las familias orientativas `GET, POST, PUT /api/odontologo/motivos`, `GET, PUT /api/odontologo/horario` y `GET, POST, DELETE /api/odontologo/bloqueos`.
+  - Aplicar las decisiones PB-02/PB-03/PB-05 sobre franjas, duraciones y cambios con reservas; implementar US-001/US-002/US-003 en backend mediante las familias orientativas `GET, POST, PUT /api/odontologo/motivos`, `GET, PUT /api/odontologo/horario` y `GET, POST, DELETE /api/odontologo/bloqueos`.
   - Validar nombres/duración, franjas `ATENCION`/`PAUSA` y bloqueos; aplicar autorización de C-03 y protocolo común de escritura de C-02. No incorporar borrado de motivos ni desplazamiento/cancelación automática de turnos.
   - Preservar intervalos y duración reservada de turnos existentes; aplicar la política revisada de conflictos ante cambios simultáneos de disponibilidad y reserva.
   - Verificar los casos de US-001 a US-003 que dependen de reservas mediante fixtures ficticios en PostgreSQL y concurrencia sincronizada; registrar qué criterios esperan interfaz y recorrido completo en C-16.
@@ -331,7 +332,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 - **Estado**: `[ ]` pendiente.
 - **Scope**:
-  - Resolver PB-01/PB-02/PB-03 y precisar entradas/salidas de `GET /api/public/motivos` y `GET /api/public/disponibilidad` a partir del mapa orientativo de la KB.
+  - Resolver PB-01 y precisar entradas/salidas de `GET /api/public/motivos` y `GET /api/public/disponibilidad` a partir del mapa orientativo de la KB; consumir las reglas PB-02/PB-03 ya definidas en C-06.
   - Implementar US-004 calculando el intervalo completo por duración, horario, pausas, bloqueos, ocupación confirmada, zona y ventana de 24 horas a 30 días; conservar intervalos contiguos permitidos y reloj controlable.
   - Devolver únicamente opciones de reserva, sin datos de pacientes ni detalles de citas ocupadas; sin retención del horario. Seguir RN-AU-01 y revisar como CRITICAL cualquier control de seguridad nuevo que hiciera falta; C-07 no implementa el mecanismo de enlaces de C-04.
   - Comprobar bordes temporales acordados, turnos parcialmente superpuestos, pausas/bloqueos y período vacío/error de consulta; usar fixtures de Turno para demostrar ocupación antes de C-08. La pantalla llega en C-13.
@@ -352,7 +353,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 - **Estado**: `[ ]` pendiente.
 - **Scope**:
-  - Resolver partes aplicables de PB-01/PB-02/PB-04/PB-08/PB-10; precisar `POST /api/public/turnos` con nombre, apellido, email, teléfono y DNI obligatorios, entradas/salidas y resultado de conflicto o solicitud incierta.
+  - Resolver partes aplicables de PB-01/PB-04/PB-08/PB-10; consumir PB-02/PB-03 definidas en C-06; precisar `POST /api/public/turnos` con nombre, apellido, email, teléfono y DNI obligatorios, entradas/salidas y resultado de conflicto o solicitud incierta.
   - Implementar US-005/FL-04: validar nuevamente motivo, referencias, tiempo y disponibilidad después de adquirir la coordinación de escritura; persistir paciente según política, Turno `CONFIRMADO`, duración reservada, credencial e intención de confirmación/recordatorio conforme a C-02/C-04/C-05.
   - No sobrescribir ni divulgar registros por coincidir DNI/email, no exigir cuenta o verificación previa y no cancelar por inferencia ante falla SMTP. Consumir los mecanismos de seguridad aprobados sin modificarlos.
   - Comprobar reservas simultáneas con intervalos iguales y parcialmente solapados mediante solicitudes sincronizadas contra PostgreSQL real: como máximo una confirmada, rollback sin turno parcial y resultado observable del perdedor. Incluir carrera con cambio de bloqueo/configuración y repetición según PB-08. CT-01/CT-03; email real US-010 se completa en C-11.
@@ -369,7 +370,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 - **Estado**: `[ ]` pendiente.
 - **Scope**:
-  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-05/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables.
+  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables; usar PB-05 ya definida en C-06.
   - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
   - Cancelar sin borrado físico; reprogramar conservando identificador y estado `CONFIRMADO`, con nuevo intervalo y revisión. Coordinar intención de aviso y recordatorio según C-05; el original debe conservarse ante cualquier rechazo o fallo del cambio.
   - Verificar plazo, contacto fuera de plazo sin excepciones inventadas, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La protección de credenciales se reutiliza; cualquier cambio en su semántica vuelve a revisión CRITICAL. CT-01 y FL-05/FL-06/FL-07.

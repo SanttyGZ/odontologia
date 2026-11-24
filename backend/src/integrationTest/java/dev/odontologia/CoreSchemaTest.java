@@ -143,12 +143,16 @@ class CoreSchemaTest {
     }
 
     static final OffsetDateTime START = OffsetDateTime.parse("2030-01-08T10:00:00.123456-03:00");
+    static final String TEST_CONSULTORIO_NOMBRE = "Demo";
+    static final String TEST_ODONTOLOGO_NOMBRE = "Profesional de prueba";
 
     static Fixture fixture(TestDatabase db) {
         db.flyway().migrate();
         var f = new Fixture(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
-        db.jdbc.update("INSERT INTO consultorio (id, nombre_visible, zona_horaria) VALUES (?, 'Demo', 'Etc/UTC')", f.consultorio());
-        db.jdbc.update("INSERT INTO odontologo VALUES (?, ?, 'Profesional de prueba')", f.odontologo(), f.consultorio());
+        db.jdbc.update("INSERT INTO consultorio (id, nombre_visible, zona_horaria) VALUES (?, ?, 'Etc/UTC')",
+                f.consultorio(), TEST_CONSULTORIO_NOMBRE);
+        db.jdbc.update("INSERT INTO odontologo VALUES (?, ?, ?)", f.odontologo(), f.consultorio(),
+                TEST_ODONTOLOGO_NOMBRE);
         db.jdbc.update("INSERT INTO agenda VALUES (?, ?)", f.agenda(), f.odontologo());
         db.jdbc.update("INSERT INTO motivo_consulta VALUES (?, ?, 'Motivo de prueba', 30)", f.motivo(), f.agenda());
         insertPatient(db.jdbc, f.paciente(), f.consultorio());
