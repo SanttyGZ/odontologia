@@ -18,11 +18,13 @@ export function App({ client = defaultApiClient }: AppProps) {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SectionTab>('motivos');
+  const [sectionBusy, setSectionBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleSessionExpired = useCallback(
     (message: string) => {
       client.clearCsrfToken();
+      setSectionBusy(false);
       setLogoutError(null);
       setAuthNotice(message);
       setAuthState('unauthenticated');
@@ -63,6 +65,7 @@ export function App({ client = defaultApiClient }: AppProps) {
       setLogoutError(result.message);
       return;
     }
+    setSectionBusy(false);
     setAuthNotice(null);
     setAuthState('unauthenticated');
   }
@@ -119,6 +122,7 @@ export function App({ client = defaultApiClient }: AppProps) {
                 aria-controls="panel-motivos"
                 className={activeTab === 'motivos' ? 'tab tab-active' : 'tab'}
                 onClick={() => setActiveTab('motivos')}
+                disabled={sectionBusy || loggingOut}
               >
                 Motivos de consulta
               </button>
@@ -130,6 +134,7 @@ export function App({ client = defaultApiClient }: AppProps) {
                 aria-controls="panel-horario"
                 className={activeTab === 'horario' ? 'tab tab-active' : 'tab'}
                 onClick={() => setActiveTab('horario')}
+                disabled={sectionBusy || loggingOut}
               >
                 Horario semanal
               </button>
@@ -141,6 +146,7 @@ export function App({ client = defaultApiClient }: AppProps) {
                 aria-controls="panel-bloqueos"
                 className={activeTab === 'bloqueos' ? 'tab tab-active' : 'tab'}
                 onClick={() => setActiveTab('bloqueos')}
+                disabled={sectionBusy || loggingOut}
               >
                 Bloqueos
               </button>
@@ -153,13 +159,25 @@ export function App({ client = defaultApiClient }: AppProps) {
               className="panel"
             >
               {activeTab === 'motivos' ? (
-                <MotivosSection apiClient={client} onSessionExpired={handleSessionExpired} />
+                <MotivosSection
+                  apiClient={client}
+                  onSessionExpired={handleSessionExpired}
+                  onBusyChange={setSectionBusy}
+                />
               ) : null}
               {activeTab === 'horario' ? (
-                <HorarioSection apiClient={client} onSessionExpired={handleSessionExpired} />
+                <HorarioSection
+                  apiClient={client}
+                  onSessionExpired={handleSessionExpired}
+                  onBusyChange={setSectionBusy}
+                />
               ) : null}
               {activeTab === 'bloqueos' ? (
-                <BloqueosSection apiClient={client} onSessionExpired={handleSessionExpired} />
+                <BloqueosSection
+                  apiClient={client}
+                  onSessionExpired={handleSessionExpired}
+                  onBusyChange={setSectionBusy}
+                />
               ) : null}
             </div>
           </div>

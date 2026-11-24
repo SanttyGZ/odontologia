@@ -11,9 +11,10 @@ import {
 interface BloqueosSectionProps {
   apiClient: ApiClient;
   onSessionExpired: (message: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function BloqueosSection({ apiClient, onSessionExpired }: BloqueosSectionProps) {
+export function BloqueosSection({ apiClient, onSessionExpired, onBusyChange }: BloqueosSectionProps) {
   const timeZone = getConsultorioTimeZone();
   const [bloqueos, setBloqueos] = useState<Bloqueo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,13 @@ export function BloqueosSection({ apiClient, onSessionExpired }: BloqueosSection
   const [descripcion, setDescripcion] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    onBusyChange?.(saving || deletingId !== null);
+    return () => {
+      onBusyChange?.(false);
+    };
+  }, [deletingId, onBusyChange, saving]);
 
   const loadBloqueos = useCallback(async (): Promise<void> => {
     setLoading(true);

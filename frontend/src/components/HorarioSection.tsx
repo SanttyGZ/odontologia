@@ -45,15 +45,23 @@ function createEmptyFranja(): FranjaSemanal {
 interface HorarioSectionProps {
   apiClient: ApiClient;
   onSessionExpired: (message: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionProps) {
+export function HorarioSection({ apiClient, onSessionExpired, onBusyChange }: HorarioSectionProps) {
   const [franjas, setFranjas] = useState<FranjaSemanal[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const latestRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    onBusyChange?.(saving);
+    return () => {
+      onBusyChange?.(false);
+    };
+  }, [onBusyChange, saving]);
 
   const loadHorario = useCallback(async (): Promise<void> => {
     const requestId = ++latestRequestIdRef.current;

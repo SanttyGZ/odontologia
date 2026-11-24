@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from './api/apiClient';
 import { createApiClient } from './api/apiClient';
+import type { ApiResult, HorarioResponse } from './types/odontologia';
 import { App } from './App';
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
   return {
@@ -207,5 +216,39 @@ describe('App - flujo de sesion', () => {
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/token de seguridad/i);
     expect(screen.getByRole('button', { name: /cerrar sesión/i })).toBeTruthy();
+  });
+
+  it('deshabilita el cambio de pestana mientras hay un guardado pendiente y lo rehabilita al terminar', async () => {
+    const user = userEvent.setup();
+    const pendingSave = createDeferred<ApiResult<HorarioResponse>>();
+    const replaceHorario = vi.fn().mockReturnValue(pendingSave.promise);
+    const client = makeClient({
+      getHorario: vi.fn().mockResolvedValue({ ok: true, data: { franjas: [] } }),
+      replaceHorario,
+    });
+
+    render(<App client={client} />);
+
+    await screen.findByRole('tab', { name: /horario semanal/i });
+    await user.click(screen.getByRole('tab', { name: /horario semanal/i }));
+    await screen.findByRole('button', { name: /guardar horario/i });
+
+    await user.click(screen.getByRole('button', { name: /guardar horario/i }));
+
+    const tabMotivos = screen.getByRole('tab', { name: /motivos de consulta/i }) as HTMLButtonElement;
+    const tabHorario = screen.getByRole('tab', { name: /horario semanal/i }) as HTMLButtonElement;
+    const tabBloqueos = screen.getByRole('tab', { name: /bloqueos/i }) as HTMLButtonElement;
+
+    expect(tabMotivos.disabled).toBe(true);
+    expect(tabHorario.disabled).toBe(true);
+    expect(tabBloqueos.disabled).toBe(true);
+
+    pendingSave.resolve({ ok: true, data: { franjas: [] } });
+
+    await waitFor(() => {
+      expect(tabMotivos.disabled).toBe(false);
+    });
+    await user.click(tabMotivos);
+    expect(await screen.findByRole('heading', { name: /motivos de consulta/i })).toBeTruthy();
   });
 });

@@ -9,9 +9,10 @@ const ALLOWED_DURATIONS: readonly number[] = Array.from({ length: 16 }, (_, inde
 interface MotivosSectionProps {
   apiClient: ApiClient;
   onSessionExpired: (message: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function MotivosSection({ apiClient, onSessionExpired }: MotivosSectionProps) {
+export function MotivosSection({ apiClient, onSessionExpired, onBusyChange }: MotivosSectionProps) {
   const [motivos, setMotivos] = useState<Motivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,6 +21,13 @@ export function MotivosSection({ apiClient, onSessionExpired }: MotivosSectionPr
   const [duracionMinutos, setDuracionMinutos] = useState<number>(30);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    onBusyChange?.(saving);
+    return () => {
+      onBusyChange?.(false);
+    };
+  }, [onBusyChange, saving]);
 
   useEffect(() => {
     let active = true;
