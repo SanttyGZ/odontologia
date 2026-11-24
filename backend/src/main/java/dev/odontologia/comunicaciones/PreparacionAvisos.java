@@ -20,7 +20,7 @@ public final class PreparacionAvisos {
 
     private final JdbcTemplate jdbc;
 
-    PreparacionAvisos(JdbcTemplate jdbc) {
+    public PreparacionAvisos(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 

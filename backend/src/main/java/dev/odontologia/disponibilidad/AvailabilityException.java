@@ -29,6 +29,10 @@ public final class AvailabilityException extends RuntimeException {
         return new AvailabilityException("CONFIGURATION_CONFLICT", HttpStatus.CONFLICT);
     }
 
+    static AvailabilityException slotUnavailable() {
+        return new AvailabilityException("SLOT_UNAVAILABLE", HttpStatus.CONFLICT);
+    }
+
     static AvailabilityException motivoNotFound() {
         return new AvailabilityException("MOTIVO_NOT_FOUND", HttpStatus.NOT_FOUND);
     }

@@ -11,7 +11,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = AvailabilityConfigurationController.class)
+@RestControllerAdvice(assignableTypes = {AvailabilityConfigurationController.class, PublicAvailabilityController.class,
+        PublicBookingController.class})
 public final class AvailabilityErrorAdvice {
 
     @ExceptionHandler(AvailabilityException.class)

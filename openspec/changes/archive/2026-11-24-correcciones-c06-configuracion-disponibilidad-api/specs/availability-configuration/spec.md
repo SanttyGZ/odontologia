@@ -52,7 +52,7 @@ La API interna SHALL permitir consultar y reemplazar en una sola operación el h
 
 ### Requirement: AC-05 Protección de turnos ante cambios de disponibilidad
 
-Una modificación del horario semanal o un bloqueo nuevo SHALL rechazarse si deja un turno `CONFIRMADO` sin caber por completo dentro de una única franja `ATENCION` del mismo día, dentro de una pausa o intersectado por el bloqueo. La contigüidad entre franjas `ATENCION` SHALL seguir siendo válida para configurar horarios, pero no SHALL combinar varias franjas para cubrir un turno. El rechazo SHALL usar `409 CONFIGURATION_CONFLICT` y no SHALL cancelar ni desplazar el turno ni persistir parcialmente la configuración.
+Una modificación del horario semanal o un bloqueo nuevo SHALL rechazarse con `409 CONFIGURATION_CONFLICT` si deja un turno `CONFIRMADO` sin caber por completo dentro de una única franja `ATENCION` del mismo día, dentro de una pausa o intersectado por el bloqueo, sin cancelar ni desplazar el turno ni persistir parcialmente la configuración. La contigüidad entre franjas `ATENCION` SHALL seguir siendo válida para configurar horarios, pero no SHALL combinar varias franjas para cubrir un turno.
 
 #### Scenario: Cambio semanal incompatible con un turno confirmado
 - **WHEN** el reemplazo del horario excluye parte o todo el intervalo de un turno confirmado, o lo cubre con una pausa
