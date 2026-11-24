@@ -29,7 +29,7 @@ Al iniciar el flujo interno, la interfaz SHALL consultar `GET /api/odontologo/se
 - **THEN** la interfaz informa que el acceso interno no está disponible en este entorno y no intenta crear credenciales ni reintentar automáticamente.
 
 ### Requirement: CW-02 Manejo del ciclo de token CSRF y cierre de sesión
-La interfaz SHALL obtener el token y el nombre del encabezado desde `GET /api/odontologo/csrf`, conservarlos únicamente en memoria y enviarlos en toda escritura interna y en el cierre. Al cambiar el estado de sesión o recibir `403 CSRF_INVALID`, SHALL descartar el token previo y obtener uno nuevo antes de la siguiente escritura sin reenviar automáticamente la operación fallida.
+La interfaz SHALL obtener el token y el nombre del encabezado desde `GET /api/odontologo/csrf`, conservarlos en memoria y enviarlos en toda escritura interna y en el cierre. Ante `403 CSRF_INVALID` en una escritura interna o cierre, SHALL descartar el token, consultar `GET /api/odontologo/sesion` sin reenviar la escritura, volver al ingreso ante `401` o permitir reintento manual con token nuevo ante `200`.
 
 #### Scenario: Cierre de sesión explícito
 - **WHEN** el odontólogo acciona el cierre y `POST /api/odontologo/sesion/cierre` responde `204`
@@ -37,7 +37,15 @@ La interfaz SHALL obtener el token y el nombre del encabezado desde `GET /api/od
 
 #### Scenario: Rechazo por token CSRF inválido o vencido
 - **WHEN** una escritura o cierre responde `403 CSRF_INVALID`
-- **THEN** la interfaz descarta el token actual, solicita un nuevo token si el usuario desea continuar, muestra un error explícito y no reenvía la escritura automáticamente.
+- **THEN** la interfaz descarta el token actual, consulta `GET /api/odontologo/sesion` sin reenviar la escritura automáticamente y actúa según el estado de sesión vigente.
+
+#### Scenario: Escritura rechazada con 403 CSRF_INVALID y sesión expirada
+- **WHEN** una escritura interna recibe `403 CSRF_INVALID` y al consultar `GET /api/odontologo/sesion` el backend responde `401 SESSION_REQUIRED`
+- **THEN** la interfaz descarta el token CSRF, no reenvía la escritura, limpia la vista interna y vuelve al formulario de ingreso con un mensaje claro de expiración.
+
+#### Scenario: Escritura rechazada con 403 CSRF_INVALID y sesión activa
+- **WHEN** una escritura interna recibe `403 CSRF_INVALID` y `GET /api/odontologo/sesion` responde `200` con `autenticado: true`
+- **THEN** la interfaz descarta el token previo, no reenvía la escritura automáticamente, muestra el error al usuario y permite reintentar manualmente obteniendo un token nuevo.
 
 #### Scenario: Pérdida o expiración de sesión durante el uso
 - **WHEN** cualquier consulta o escritura interna responde `401 SESSION_REQUIRED`
@@ -59,7 +67,19 @@ La interfaz autenticada SHALL permitir listar, crear y editar motivos mediante `
 - **THEN** la interfaz informa el rechazo sin modificar la lista persistida ni dar por guardado el cambio.
 
 ### Requirement: CW-04 Edición web del horario semanal y pausas
-La interfaz autenticada SHALL consultar `GET /api/odontologo/horario`, permitir editar el conjunto completo de franjas (`ATENCION` y `PAUSA` para días lunes `1` a domingo `7` con `horaInicio` y `horaFin`) y persistir el reemplazo en una sola solicitud `PUT /api/odontologo/horario`.
+La interfaz autenticada SHALL consultar `GET /api/odontologo/horario`. Si la consulta falla, SHALL mostrar el error con reintento y bloquear edición y guardado hasta obtener una respuesta válida. Con respuesta válida, SHALL permitir editar franjas (`ATENCION`/`PAUSA`, días `1` a `7`) conservando la precisión original de horas no modificadas y guardar en un único `PUT /api/odontologo/horario`.
+
+#### Scenario: Fallo en la consulta inicial de horario
+- **WHEN** `GET /api/odontologo/horario` falla con `500 TECHNICAL_FAILURE` o error de red
+- **THEN** la interfaz muestra el error y un botón de reintento, y bloquea la edición y el guardado de forma que jamás habilite un `PUT` con una lista vacía.
+
+#### Scenario: Consulta exitosa sin franjas configuradas
+- **WHEN** `GET /api/odontologo/horario` responde `200` con `franjas: []`
+- **THEN** la interfaz habilita el formulario para agregar franjas y crear un horario.
+
+#### Scenario: Preservación de precisión en horas no editadas
+- **WHEN** `GET /api/odontologo/horario` devuelve franjas con segundos como `09:00:30`–`12:00:45` y el usuario guarda sin modificarlas o editando otra franja
+- **THEN** el cuerpo de `PUT /api/odontologo/horario` conserva exactamente `09:00:30` y `12:00:45` sin recortarlos.
 
 #### Scenario: Reemplazo válido del horario semanal
 - **WHEN** el odontólogo guarda franjas válidas y `PUT /api/odontologo/horario` responde `200`

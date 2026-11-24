@@ -16,12 +16,14 @@ interface AppProps {
 export function App({ client = defaultApiClient }: AppProps) {
   const [authState, setAuthState] = useState<AuthState>('checking');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SectionTab>('motivos');
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleSessionExpired = useCallback(
     (message: string) => {
       client.clearCsrfToken();
+      setLogoutError(null);
       setAuthNotice(message);
       setAuthState('unauthenticated');
     },
@@ -50,10 +52,15 @@ export function App({ client = defaultApiClient }: AppProps) {
 
   async function handleLogout(): Promise<void> {
     setLoggingOut(true);
+    setLogoutError(null);
     const result = await client.logout();
     setLoggingOut(false);
-    if (!result.ok && result.codigo !== 'SESSION_REQUIRED') {
-      setAuthNotice(result.message);
+    if (!result.ok) {
+      if (result.codigo === 'SESSION_REQUIRED') {
+        handleSessionExpired(result.message);
+        return;
+      }
+      setLogoutError(result.message);
       return;
     }
     setAuthNotice(null);
@@ -96,6 +103,12 @@ export function App({ client = defaultApiClient }: AppProps) {
                 {loggingOut ? 'Cerrando…' : 'Cerrar sesión'}
               </button>
             </header>
+
+            {logoutError !== null ? (
+              <p className="feedback feedback-error" role="alert" aria-live="assertive">
+                {logoutError}
+              </p>
+            ) : null}
 
             <nav className="tabs" role="tablist" aria-label="Secciones de configuración">
               <button

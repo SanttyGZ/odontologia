@@ -164,7 +164,17 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
     }
 
     if (!response.ok) {
-      return parseErrorResponse(response);
+      const errorResult = await parseErrorResponse(response);
+      if (!errorResult.ok && errorResult.codigo === 'CSRF_INVALID') {
+        const sessionCheck = await getJson('/api/odontologo/sesion', isSessionResponse);
+        if (!sessionCheck.ok && sessionCheck.codigo === 'SESSION_REQUIRED') {
+          return sessionCheck;
+        }
+        if (sessionCheck.ok && !sessionCheck.data.autenticado) {
+          return fail(401, 'SESSION_REQUIRED');
+        }
+      }
+      return errorResult;
     }
 
     if (guard === null) {

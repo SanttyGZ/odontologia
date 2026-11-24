@@ -49,7 +49,7 @@ describe('HorarioSection', () => {
 
     render(<HorarioSection apiClient={client} onSessionExpired={vi.fn()} />);
 
-    await screen.findByDisplayValue('09:00');
+    await screen.findByDisplayValue('09:00:00');
     await user.click(screen.getByRole('button', { name: /agregar franja/i }));
     await user.click(screen.getByRole('button', { name: /guardar horario/i }));
 
@@ -75,7 +75,7 @@ describe('HorarioSection', () => {
     });
 
     render(<HorarioSection apiClient={client} onSessionExpired={vi.fn()} />);
-    await screen.findByDisplayValue('09:00');
+    await screen.findByDisplayValue('09:00:00');
 
     await user.click(screen.getByRole('button', { name: /agregar franja/i }));
     await user.click(screen.getByRole('button', { name: /guardar horario/i }));
@@ -107,10 +107,89 @@ describe('HorarioSection', () => {
     });
 
     render(<HorarioSection apiClient={client} onSessionExpired={vi.fn()} />);
-    await screen.findByDisplayValue('14:00');
+    await screen.findByDisplayValue('14:00:00');
 
     await user.click(screen.getByRole('button', { name: /guardar horario/i }));
     expect(replaceHorario).not.toHaveBeenCalled();
     expect(screen.getByRole('alert').textContent).toMatch(/anterior a la hora de fin/i);
+  });
+
+  it('si falla GET /api/odontologo/horario bloquea edicion y guardado, permite reintentar y habilita crear si devuelve []', async () => {
+    const user = userEvent.setup();
+    const getHorario = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        codigo: 'TECHNICAL_FAILURE',
+        message: 'Ocurrió un error técnico en el servidor. No se guardaron cambios.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { franjas: [] },
+      });
+    const replaceHorario = vi.fn();
+
+    render(
+      <HorarioSection
+        apiClient={makeClient({ getHorario, replaceHorario })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/error técnico/i);
+    // Jamás debe habilitar edición ni un PUT con lista vacía tras fallo de GET
+    expect(screen.queryByRole('button', { name: /agregar franja/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /guardar horario/i })).toBeNull();
+    expect(replaceHorario).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /reintentar/i }));
+    expect(getHorario).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText(/no hay franjas configuradas/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /agregar franja/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /guardar horario/i })).toBeTruthy();
+  });
+
+  it('conserva 09:00:30 y 12:00:45 en PUT al guardar sin editar y al editar otra franja', async () => {
+    const user = userEvent.setup();
+    const preciseHorario: HorarioResponse = {
+      franjas: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          diaSemana: 1,
+          horaInicio: '09:00:30',
+          horaFin: '12:00:45',
+          tipo: 'ATENCION',
+        },
+      ],
+    };
+    const replaceHorario = vi.fn().mockImplementation(async (payload: HorarioResponse) => ({
+      ok: true as const,
+      data: payload,
+    }));
+
+    render(
+      <HorarioSection
+        apiClient={makeClient({
+          getHorario: vi.fn().mockResolvedValue({ ok: true, data: preciseHorario }),
+          replaceHorario,
+        })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByDisplayValue('09:00:30');
+    await user.click(screen.getByRole('button', { name: /guardar horario/i }));
+
+    expect(replaceHorario).toHaveBeenCalledTimes(1);
+    expect(replaceHorario.mock.calls[0]?.[0]).toEqual(preciseHorario);
+
+    await user.click(screen.getByRole('button', { name: /agregar franja/i }));
+    await user.click(screen.getByRole('button', { name: /guardar horario/i }));
+
+    expect(replaceHorario).toHaveBeenCalledTimes(2);
+    const secondPayload = replaceHorario.mock.calls[1]?.[0] as HorarioResponse;
+    expect(secondPayload.franjas[0]).toEqual(preciseHorario.franjas[0]);
+    expect(secondPayload.franjas).toHaveLength(2);
   });
 });

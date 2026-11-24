@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { ApiClient } from '../api/apiClient';
 import type { FranjaSemanal, FranjaTipo } from '../types/odontologia';
@@ -13,8 +13,14 @@ const DIAS_SEMANA: ReadonlyArray<{ value: number; label: string }> = [
   { value: 7, label: 'Domingo' },
 ];
 
-function toInputTime(raw: string): string {
-  return raw.length >= 5 ? raw.slice(0, 5) : raw;
+type LoadState = 'loading' | 'loaded' | 'error';
+
+function normalizeTimeForCompare(raw: string): string {
+  const trimmed = raw.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00`;
+  }
+  return trimmed;
 }
 
 function createEmptyFranja(): FranjaSemanal {
@@ -34,41 +40,31 @@ interface HorarioSectionProps {
 
 export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionProps) {
   const [franjas, setFranjas] = useState<FranjaSemanal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    async function loadHorario(): Promise<void> {
-      setLoading(true);
-      const result = await apiClient.getHorario();
-      if (!active) {
+  const loadHorario = useCallback(async (): Promise<void> => {
+    setLoadState('loading');
+    setErrorMessage(null);
+    const result = await apiClient.getHorario();
+    if (!result.ok) {
+      if (result.codigo === 'SESSION_REQUIRED') {
+        onSessionExpired(result.message);
         return;
       }
-      setLoading(false);
-      if (!result.ok) {
-        if (result.codigo === 'SESSION_REQUIRED') {
-          onSessionExpired(result.message);
-          return;
-        }
-        setErrorMessage(result.message);
-        return;
-      }
-      setFranjas(
-        result.data.franjas.map((item) => ({
-          ...item,
-          horaInicio: toInputTime(item.horaInicio),
-          horaFin: toInputTime(item.horaFin),
-        })),
-      );
+      setLoadState('error');
+      setErrorMessage(result.message);
+      return;
     }
-    void loadHorario();
-    return () => {
-      active = false;
-    };
+    setFranjas(result.data.franjas);
+    setLoadState('loaded');
   }, [apiClient, onSessionExpired]);
+
+  useEffect(() => {
+    void loadHorario();
+  }, [loadHorario]);
 
   function updateFranja(id: string, patch: Partial<FranjaSemanal>): void {
     setFranjas((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -88,9 +84,13 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (loadState !== 'loaded') {
+      return;
+    }
+
     for (const row of franjas) {
-      const inicio = toInputTime(row.horaInicio);
-      const fin = toInputTime(row.horaFin);
+      const inicio = normalizeTimeForCompare(row.horaInicio);
+      const fin = normalizeTimeForCompare(row.horaFin);
       if (inicio.length === 0 || fin.length === 0 || inicio >= fin) {
         setErrorMessage('Cada franja debe tener una hora de inicio anterior a la hora de fin.');
         setSuccessMessage(null);
@@ -102,15 +102,7 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const payload = {
-      franjas: franjas.map((row) => ({
-        ...row,
-        horaInicio: toInputTime(row.horaInicio),
-        horaFin: toInputTime(row.horaFin),
-      })),
-    };
-
-    const result = await apiClient.replaceHorario(payload);
+    const result = await apiClient.replaceHorario({ franjas });
     setSaving(false);
 
     if (!result.ok) {
@@ -122,13 +114,7 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
       return;
     }
 
-    setFranjas(
-      result.data.franjas.map((item) => ({
-        ...item,
-        horaInicio: toInputTime(item.horaInicio),
-        horaFin: toInputTime(item.horaFin),
-      })),
-    );
+    setFranjas(result.data.franjas);
     setSuccessMessage('Horario semanal guardado.');
   }
 
@@ -151,9 +137,17 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
         </p>
       ) : null}
 
-      {loading ? <p aria-busy="true">Cargando horario…</p> : null}
+      {loadState === 'loading' ? <p aria-busy="true">Cargando horario…</p> : null}
 
-      {!loading ? (
+      {loadState === 'error' ? (
+        <div className="actions">
+          <button type="button" className="btn btn-secondary" onClick={() => void loadHorario()}>
+            Reintentar
+          </button>
+        </div>
+      ) : null}
+
+      {loadState === 'loaded' ? (
         <form onSubmit={(event) => void handleSubmit(event)} className="stack">
           {franjas.length === 0 ? (
             <p className="muted">No hay franjas configuradas todavía.</p>
@@ -199,7 +193,8 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
                     <input
                       id={`franja-inicio-${franja.id}`}
                       type="time"
-                      value={toInputTime(franja.horaInicio)}
+                      step="1"
+                      value={franja.horaInicio}
                       onChange={(event) => updateFranja(franja.id, { horaInicio: event.target.value })}
                       disabled={saving}
                       required
@@ -211,7 +206,8 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
                     <input
                       id={`franja-fin-${franja.id}`}
                       type="time"
-                      value={toInputTime(franja.horaFin)}
+                      step="1"
+                      value={franja.horaFin}
                       onChange={(event) => updateFranja(franja.id, { horaFin: event.target.value })}
                       disabled={saving}
                       required

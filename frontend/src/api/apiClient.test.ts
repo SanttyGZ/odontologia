@@ -73,11 +73,12 @@ describe('apiClient', () => {
     expect(createHeaders.get('X-CSRF-TOKEN')).toBe('csrf-auth');
   });
 
-  it('ante 403 CSRF_INVALID descarta el token y NO reenvia automaticamente la escritura', async () => {
+  it('ante 403 CSRF_INVALID con sesion activa descarta el token, consulta sesion sin reenviar y permite reintento manual', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(200, { token: 'csrf-1', headerName: 'X-CSRF-TOKEN' }))
       .mockResolvedValueOnce(jsonResponse(403, { codigo: 'CSRF_INVALID' }))
+      .mockResolvedValueOnce(jsonResponse(200, { autenticado: true }))
       .mockResolvedValueOnce(jsonResponse(200, { token: 'csrf-2', headerName: 'X-CSRF-TOKEN' }))
       .mockResolvedValueOnce(
         jsonResponse(201, {
@@ -95,15 +96,36 @@ describe('apiClient', () => {
       expect(failed.status).toBe(403);
       expect(failed.codigo).toBe('CSRF_INVALID');
     }
-    // Solo 2 llamadas: GET csrf + POST motivo. No reenvio automatico.
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 3 llamadas: GET csrf + POST motivo + GET sesion. No reenvio automatico.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/odontologo/sesion');
 
-    // En el reintento manual del usuario, solicita un token nuevo
+    // En el reintento manual del usuario, solicita un token nuevo y envia la escritura una sola vez
     const retried = await client.createMotivo({ nombre: 'Limpieza', duracionMinutos: 45 });
     expect(retried.ok).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    const retryHeaders = new Headers(fetchMock.mock.calls[3]?.[1]?.headers);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const retryHeaders = new Headers(fetchMock.mock.calls[4]?.[1]?.headers);
     expect(retryHeaders.get('X-CSRF-TOKEN')).toBe('csrf-2');
+  });
+
+  it('ante 403 CSRF_INVALID con sesion expirada (401 SESSION_REQUIRED) devuelve SESSION_REQUIRED sin reenviar', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(200, { token: 'csrf-1', headerName: 'X-CSRF-TOKEN' }))
+      .mockResolvedValueOnce(jsonResponse(403, { codigo: 'CSRF_INVALID' }))
+      .mockResolvedValueOnce(jsonResponse(401, { codigo: 'SESSION_REQUIRED' }));
+
+    const client = createApiClient(fetchMock);
+
+    const failed = await client.createMotivo({ nombre: 'Limpieza', duracionMinutos: 45 });
+    expect(failed.ok).toBe(false);
+    if (!failed.ok) {
+      expect(failed.status).toBe(401);
+      expect(failed.codigo).toBe('SESSION_REQUIRED');
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/odontologo/motivos');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/odontologo/sesion');
   });
 
   it('mapea errores de dominio (409, 404, 503, 500) y fallos de red sin lanzar', async () => {
