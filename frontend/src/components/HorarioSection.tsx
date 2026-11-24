@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { ApiClient } from '../api/apiClient';
 import type { FranjaSemanal, FranjaTipo } from '../types/odontologia';
@@ -15,12 +15,21 @@ const DIAS_SEMANA: ReadonlyArray<{ value: number; label: string }> = [
 
 type LoadState = 'loading' | 'loaded' | 'error';
 
+function toTimeInputValue(raw: string): string {
+  const dotIndex = raw.indexOf('.');
+  return dotIndex === -1 ? raw : raw.slice(0, dotIndex);
+}
+
+function extractSubsecondFraction(raw: string): string | null {
+  const match = /(\.\d+)$/.exec(raw.trim());
+  return match?.[1] ?? null;
+}
+
 function normalizeTimeForCompare(raw: string): string {
   const trimmed = raw.trim();
-  if (/^\d{2}:\d{2}$/.test(trimmed)) {
-    return `${trimmed}:00`;
-  }
-  return trimmed;
+  const [base = '', fraction = ''] = trimmed.split('.');
+  const hms = /^\d{2}:\d{2}$/.test(base) ? `${base}:00` : base;
+  return `${hms}.${fraction.padEnd(6, '0').slice(0, 6)}`;
 }
 
 function createEmptyFranja(): FranjaSemanal {
@@ -44,11 +53,16 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const loadHorario = useCallback(async (): Promise<void> => {
+    const requestId = ++latestRequestIdRef.current;
     setLoadState('loading');
     setErrorMessage(null);
     const result = await apiClient.getHorario();
+    if (requestId !== latestRequestIdRef.current) {
+      return;
+    }
     if (!result.ok) {
       if (result.codigo === 'SESSION_REQUIRED') {
         onSessionExpired(result.message);
@@ -64,6 +78,9 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
 
   useEffect(() => {
     void loadHorario();
+    return () => {
+      latestRequestIdRef.current += 1;
+    };
   }, [loadHorario]);
 
   function updateFranja(id: string, patch: Partial<FranjaSemanal>): void {
@@ -91,7 +108,7 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
     for (const row of franjas) {
       const inicio = normalizeTimeForCompare(row.horaInicio);
       const fin = normalizeTimeForCompare(row.horaFin);
-      if (inicio.length === 0 || fin.length === 0 || inicio >= fin) {
+      if (row.horaInicio.trim().length === 0 || row.horaFin.trim().length === 0 || inicio >= fin) {
         setErrorMessage('Cada franja debe tener una hora de inicio anterior a la hora de fin.');
         setSuccessMessage(null);
         return;
@@ -153,79 +170,85 @@ export function HorarioSection({ apiClient, onSessionExpired }: HorarioSectionPr
             <p className="muted">No hay franjas configuradas todavía.</p>
           ) : (
             <div className="stack">
-              {franjas.map((franja, index) => (
-                <div key={franja.id} className="card franja-row">
-                  <div className="field">
-                    <label htmlFor={`franja-dia-${franja.id}`}>Día ({index + 1})</label>
-                    <select
-                      id={`franja-dia-${franja.id}`}
-                      value={franja.diaSemana}
-                      onChange={(event) =>
-                        updateFranja(franja.id, { diaSemana: Number(event.target.value) })
-                      }
-                      disabled={saving}
-                    >
-                      {DIAS_SEMANA.map((dia) => (
-                        <option key={dia.value} value={dia.value}>
-                          {dia.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {franjas.map((franja, index) => {
+                const inicioFraction = extractSubsecondFraction(franja.horaInicio);
+                const finFraction = extractSubsecondFraction(franja.horaFin);
+                return (
+                  <div key={franja.id} className="card franja-row">
+                    <div className="field">
+                      <label htmlFor={`franja-dia-${franja.id}`}>Día ({index + 1})</label>
+                      <select
+                        id={`franja-dia-${franja.id}`}
+                        value={franja.diaSemana}
+                        onChange={(event) =>
+                          updateFranja(franja.id, { diaSemana: Number(event.target.value) })
+                        }
+                        disabled={saving}
+                      >
+                        {DIAS_SEMANA.map((dia) => (
+                          <option key={dia.value} value={dia.value}>
+                            {dia.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="field">
-                    <label htmlFor={`franja-tipo-${franja.id}`}>Tipo</label>
-                    <select
-                      id={`franja-tipo-${franja.id}`}
-                      value={franja.tipo}
-                      onChange={(event) =>
-                        updateFranja(franja.id, { tipo: event.target.value as FranjaTipo })
-                      }
-                      disabled={saving}
-                    >
-                      <option value="ATENCION">Atención</option>
-                      <option value="PAUSA">Pausa</option>
-                    </select>
-                  </div>
+                    <div className="field">
+                      <label htmlFor={`franja-tipo-${franja.id}`}>Tipo</label>
+                      <select
+                        id={`franja-tipo-${franja.id}`}
+                        value={franja.tipo}
+                        onChange={(event) =>
+                          updateFranja(franja.id, { tipo: event.target.value as FranjaTipo })
+                        }
+                        disabled={saving}
+                      >
+                        <option value="ATENCION">Atención</option>
+                        <option value="PAUSA">Pausa</option>
+                      </select>
+                    </div>
 
-                  <div className="field">
-                    <label htmlFor={`franja-inicio-${franja.id}`}>Inicio</label>
-                    <input
-                      id={`franja-inicio-${franja.id}`}
-                      type="time"
-                      step="1"
-                      value={franja.horaInicio}
-                      onChange={(event) => updateFranja(franja.id, { horaInicio: event.target.value })}
-                      disabled={saving}
-                      required
-                    />
-                  </div>
+                    <div className="field">
+                      <label htmlFor={`franja-inicio-${franja.id}`}>Inicio</label>
+                      <input
+                        id={`franja-inicio-${franja.id}`}
+                        type="time"
+                        step="1"
+                        value={toTimeInputValue(franja.horaInicio)}
+                        onChange={(event) => updateFranja(franja.id, { horaInicio: event.target.value })}
+                        disabled={saving}
+                        required
+                      />
+                      {inicioFraction !== null ? <span className="muted">{inicioFraction}</span> : null}
+                    </div>
 
-                  <div className="field">
-                    <label htmlFor={`franja-fin-${franja.id}`}>Fin</label>
-                    <input
-                      id={`franja-fin-${franja.id}`}
-                      type="time"
-                      step="1"
-                      value={franja.horaFin}
-                      onChange={(event) => updateFranja(franja.id, { horaFin: event.target.value })}
-                      disabled={saving}
-                      required
-                    />
-                  </div>
+                    <div className="field">
+                      <label htmlFor={`franja-fin-${franja.id}`}>Fin</label>
+                      <input
+                        id={`franja-fin-${franja.id}`}
+                        type="time"
+                        step="1"
+                        value={toTimeInputValue(franja.horaFin)}
+                        onChange={(event) => updateFranja(franja.id, { horaFin: event.target.value })}
+                        disabled={saving}
+                        required
+                      />
+                      {finFraction !== null ? <span className="muted">{finFraction}</span> : null}
+                    </div>
 
-                  <div className="franja-actions">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => removeFranja(franja.id)}
-                      disabled={saving}
-                    >
-                      Quitar
-                    </button>
+                    <div className="franja-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => removeFranja(franja.id)}
+                        disabled={saving}
+                      >
+                        Quitar
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
