@@ -1,6 +1,7 @@
 package dev.odontologia.disponibilidad;
 
 import dev.odontologia.agenda.AgendaWriteException;
+import dev.odontologia.agenda.DentistAgendaController;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = {AvailabilityConfigurationController.class, PublicAvailabilityController.class,
-        PublicBookingController.class})
+        PublicBookingController.class, DentistAgendaController.class})
 public final class AvailabilityErrorAdvice {
 
     @ExceptionHandler(AvailabilityException.class)

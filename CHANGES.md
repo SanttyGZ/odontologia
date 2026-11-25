@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- C-01 a C-09 y C-12 están completados y archivados. La ampliación CRITICAL de C-09 fue aprobada y quedó asentada en sus registros de cierre. La disputa de horario de AG-05 tiene prueba de integración PostgreSQL. C-10 permanece `[ ]` pendiente en `ramaSanty` (no se encontró un change archivado); C-13 tiene sus dependencias completas.
+- Los changes C-01 a C-08, C-10, C-12 y C-13 están implementados, verificados y archivados (incluidos sus seguimientos). C-09 permanece pendiente de aprobación CRITICAL explícita para usar internamente el email confirmado de recuperación al preparar avisos futuros. La disputa de AG-05 por el mismo horario ya tiene prueba de integración PostgreSQL. C-15 tiene sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -367,12 +367,12 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-09] `autogestion-turnos-api`
 
-- **Estado**: `[x]` implementación, correcciones y cierre local completados el 2026-11-25: [C-09](openspec/changes/archive/2026-11-25-autogestion-turnos-api/proposal.md), [correcciones C-09 y aprobación CRITICAL](openspec/changes/archive/2026-11-25-correcciones-c09-autogestion-turnos-api/design.md), y [seguimiento de auditoría/verificación, 7/7 tareas](openspec/changes/archive/2026-11-25-seguimiento-c09-auditoria-verificacion/proposal.md). El usuario aprobó explícitamente, al pedir terminar C-09 después de conocer el alcance, que el servicio use internamente el email confirmado en la recuperación asistida para preparar avisos futuros. La aprobación se limita a ese destinatario interno; no expone el email en respuestas HTTP, no cambia credenciales y no modifica al paciente ni avisos históricos. En Windows pasaron 18/18 pruebas focalizadas, 8/8 integraciones C-09 con PostgreSQL 17.12 temporal y `bootJar`, incluida la disputa de intervalo de AG-05. El envío SMTP permanece en C-11 y la interfaz de autogestión en C-14.
+- **Estado**: `[ ]` implementación y correcciones archivadas; queda pendiente la aprobación CRITICAL explícita del uso interno del email confirmado en una recuperación asistida para preparar avisos futuros. La frase «termina de resolver C9» no respondió a una pregunta que describiera ese alcance y no se registra como aprobación. Ver [registro de gobernanza y verificación C-09](openspec/changes/archive/2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md). Las pruebas focalizadas de Java 21 y la integración PostgreSQL 17.12 se registran allí. La disputa de AG-05 por el mismo horario ya está verificada con PostgreSQL. PB-06 queda para C-14 con `409 MANAGEMENT_WINDOW_CLOSED`; el envío SMTP permanece en C-11 y la interfaz, en C-14.
 - **Scope**:
   - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-07 y PB-08 aplicables; conservar `409 MANAGEMENT_WINDOW_CLOSED`. Fernando confirmó que PB-06 puede quedar para C-14; el canal operativo concreto se acuerda antes de esa entrega. Usar PB-05 ya definida en C-06.
   - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
   - Cancelar sin borrado físico; reprogramar conservando identificador y estado `CONFIRMADO`, con nuevo intervalo y revisión. Coordinar intención de aviso y recordatorio según C-05; el original debe conservarse ante cualquier rechazo o fallo del cambio.
-  - Verificar plazo, rechazo `409 MANAGEMENT_WINDOW_CLOSED`, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La integración PostgreSQL real de C-09 comprobó que el turno perdedor conserva intervalo, revisión, credencial e intenciones. No se agrega contacto fuera de plazo ni excepción manual. La ampliación CRITICAL aprobada se limita al destinatario interno de recuperación para avisos futuros. CT-01 y FL-05/FL-06/FL-07.
+  - Verificar plazo, rechazo `409 MANAGEMENT_WINDOW_CLOSED`, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La integración PostgreSQL real de C-09 comprobó que el turno perdedor conserva intervalo, revisión, credencial e intenciones. No se agrega contacto fuera de plazo ni excepción manual. El uso interno del email recuperado para avisos futuros queda pendiente de aprobación CRITICAL explícita. CT-01 y FL-05/FL-06/FL-07.
 - **Dependencias**: C-08.
 - **Governance**: MEDIO — estados y reglas con checkpoints; no autoriza cambiar generación/transporte/validación de enlaces de C-04.
 - **Leer antes**:
@@ -384,7 +384,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-10] `consulta-agenda-api`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-24. [Propuesta](openspec/changes/archive/2026-11-24-consulta-agenda-api/proposal.md), [6/6 tareas](openspec/changes/archive/2026-11-24-consulta-agenda-api/tasks.md), [verificación](openspec/changes/archive/2026-11-24-consulta-agenda-api/verification.md) y [seguimiento de validación estricta](openspec/changes/archive/2026-11-24-correcciones-c10-validacion-parametros/verification.md). Verificado en Windows con 9/9 `DentistAgendaServiceTest`, 21/21 `DentistAgendaControllerTest`, `compileIntegrationTestJava`, `bootJar`, `openspec validate --strict` y `git diff --check`; la ejecución de `DentistAgendaIntegrationTest` contra PostgreSQL 17.12 de Docker Compose queda pendiente para entorno Linux/WSL2 con Docker o `C-16`. Desbloquea C-15.
 - **Scope**:
   - Precisar `GET /api/odontologo/agenda` y `GET /api/odontologo/turnos/{id}` para US-006: filtros día/semana en zona acordada, datos mínimos de turno y los cinco datos básicos del paciente.
   - Consultar exclusivamente la agenda única usando el acceso previamente implementado en C-03; sin directorio público, historia clínica, edición de pacientes ni alta manual.
@@ -438,7 +438,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-13] `reserva-paciente-web`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-reserva-paciente-web](openspec/changes/archive/2026-11-25-reserva-paciente-web/proposal.md); 5/5 tareas y [verificación](openspec/changes/archive/2026-11-25-reserva-paciente-web/verification.md). Verificado con 9/9 archivos (51/51 tests Vitest/RTL), `tsc -b` estricto (`TS-01`), `vite build`, `openspec validate --all --strict --no-interactive` y `git diff --check`. El recorrido integrado con frontend servido por Spring Boot y correo real SMTP queda para `C-16`.
 - **Scope**:
   - Crear recorrido React de motivo/período/horario, formulario de los cinco datos obligatorios y resultado de reserva, consumiendo C-07/C-08; interfaz de US-004/US-005 y resultado de US-010.
   - Mantener acceso sin cuenta y sin verificación previa. Mostrar indisponibilidad, conflicto concurrente, validación y resultado incierto de acuerdo al backend, evitando presentar como libre o confirmado un resultado que no se obtuvo.

@@ -3,13 +3,17 @@ import {
   isBloqueo,
   isBloqueoList,
   isCsrfResponse,
+  isDisponibilidadPublicaResponse,
   isErrorResponse,
   isFranjaSemanal,
+  isHorarioDisponible,
   isHorarioResponse,
   isMotivo,
   isMotivoList,
+  isReservaPublicaResponse,
   isSessionResponse,
   isValidDuration,
+  toApiErrorCode,
 } from './odontologia';
 
 describe('type guards de odontologia', () => {
@@ -82,5 +86,35 @@ describe('type guards de odontologia', () => {
     expect(isErrorResponse({ codigo: 'VALIDATION_ERROR' })).toBe(true);
     expect(isErrorResponse({ codigo: '' })).toBe(false);
     expect(isErrorResponse({})).toBe(false);
+  });
+
+  it('reconoce SLOT_UNAVAILABLE y valida DisponibilidadPublicaResponse y ReservaPublicaResponse', () => {
+    expect(toApiErrorCode('SLOT_UNAVAILABLE')).toBe('SLOT_UNAVAILABLE');
+
+    const slot = { inicio: '2030-01-08T12:00:30Z', fin: '2030-01-08T12:30:30Z' };
+    expect(isHorarioDisponible(slot)).toBe(true);
+    expect(isHorarioDisponible({ inicio: '', fin: '2030-01-08T12:30:30Z' })).toBe(false);
+
+    const disp = {
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      duracionMinutos: 30,
+      zonaHoraria: 'America/Argentina/Mendoza',
+      horarios: [slot],
+    };
+    expect(isDisponibilidadPublicaResponse(disp)).toBe(true);
+    expect(isDisponibilidadPublicaResponse({ ...disp, horarios: [{}] })).toBe(false);
+
+    const reserva = {
+      turnoId: '99999999-9999-9999-9999-999999999999',
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      inicio: '2030-01-08T12:00:30Z',
+      fin: '2030-01-08T12:30:30Z',
+      duracionReservadaMinutos: 30,
+      estado: 'CONFIRMADO',
+      notificacionEstado: 'PENDIENTE',
+    };
+    expect(isReservaPublicaResponse(reserva)).toBe(true);
+    expect(isReservaPublicaResponse({ ...reserva, estado: 'OTRO' })).toBe(false);
+    expect(isReservaPublicaResponse({ ...reserva, notificacionEstado: 'ACEPTADA_SMTP' })).toBe(false);
   });
 });

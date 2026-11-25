@@ -4,19 +4,25 @@ import type {
   Bloqueo,
   BloqueoInput,
   CsrfResponse,
+  DisponibilidadPublicaParams,
+  DisponibilidadPublicaResponse,
   HorarioResponse,
   Motivo,
   MotivoInput,
+  ReservaPublicaInput,
+  ReservaPublicaResponse,
   SessionResponse,
 } from '../types/odontologia';
 import {
   isBloqueo,
   isBloqueoList,
   isCsrfResponse,
+  isDisponibilidadPublicaResponse,
   isErrorResponse,
   isHorarioResponse,
   isMotivo,
   isMotivoList,
+  isReservaPublicaResponse,
   isSessionResponse,
   toApiErrorCode,
 } from '../types/odontologia';
@@ -34,6 +40,11 @@ export interface ApiClient {
   getBloqueos: () => Promise<ApiResult<Bloqueo[]>>;
   createBloqueo: (input: BloqueoInput) => Promise<ApiResult<Bloqueo>>;
   deleteBloqueo: (bloqueoId: string) => Promise<ApiResult<void>>;
+  getPublicMotivos: () => Promise<ApiResult<Motivo[]>>;
+  getPublicDisponibilidad: (
+    params: DisponibilidadPublicaParams,
+  ) => Promise<ApiResult<DisponibilidadPublicaResponse>>;
+  createPublicTurno: (input: ReservaPublicaInput) => Promise<ApiResult<ReservaPublicaResponse>>;
   clearCsrfToken: () => void;
 }
 
@@ -46,15 +57,22 @@ function fail(status: number, codigo: ApiErrorCode): ApiResult<never> {
   };
 }
 
-async function parseJsonSafe(response: Response): Promise<unknown> {
-  const text = await response.text();
+async function readJsonBody(
+  response: Response,
+): Promise<{ ok: true; body: unknown } | { ok: false; codigo: 'NETWORK_ERROR' }> {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    return { ok: false, codigo: 'NETWORK_ERROR' };
+  }
   if (text.trim().length === 0) {
-    return null;
+    return { ok: true, body: null };
   }
   try {
-    return JSON.parse(text) as unknown;
+    return { ok: true, body: JSON.parse(text) as unknown };
   } catch {
-    return null;
+    return { ok: true, body: null };
   }
 }
 
@@ -79,7 +97,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return fail(0, 'NETWORK_ERROR');
     }
 
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     if (!response.ok) {
       const codigo = isErrorResponse(body) ? toApiErrorCode(body.codigo) : 'TECHNICAL_FAILURE';
       return fail(response.status, codigo);
@@ -92,7 +114,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
   }
 
   async function parseErrorResponse(response: Response): Promise<ApiResult<never>> {
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     let codigo: ApiErrorCode;
     if (isErrorResponse(body)) {
       codigo = toApiErrorCode(body.codigo);
@@ -125,7 +151,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return parseErrorResponse(response);
     }
 
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     if (!guard(body)) {
       return fail(response.status, 'INVALID_RESPONSE');
     }
@@ -181,11 +211,14 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return { ok: true, data: undefined as T };
     }
 
-    const body = await parseJsonSafe(response);
-    if (!guard(body)) {
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    if (!guard(parsed.body)) {
       return fail(response.status, 'INVALID_RESPONSE');
     }
-    return { ok: true, data: body };
+    return { ok: true, data: parsed.body };
   }
 
   return {
@@ -244,6 +277,46 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       mutateJson('POST', '/api/odontologo/bloqueos', input, isBloqueo),
     deleteBloqueo: (bloqueoId: string) =>
       mutateJson<void>('DELETE', `/api/odontologo/bloqueos/${encodeURIComponent(bloqueoId)}`, undefined, null),
+    getPublicMotivos: () => getJson('/api/public/motivos', isMotivoList),
+    getPublicDisponibilidad: (params: DisponibilidadPublicaParams) => {
+      const search = new URLSearchParams();
+      search.set('motivoId', params.motivoId);
+      if (typeof params.desde === 'string' && params.desde.trim().length > 0) {
+        search.set('desde', params.desde.trim());
+      }
+      if (typeof params.hasta === 'string' && params.hasta.trim().length > 0) {
+        search.set('hasta', params.hasta.trim());
+      }
+      return getJson(`/api/public/disponibilidad?${search.toString()}`, isDisponibilidadPublicaResponse);
+    },
+    createPublicTurno: async (input: ReservaPublicaInput) => {
+      let response: Response;
+      try {
+        response = await fetchImpl('/api/public/turnos', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(input),
+        });
+      } catch {
+        return fail(0, 'NETWORK_ERROR');
+      }
+
+      if (!response.ok) {
+        return parseErrorResponse(response);
+      }
+
+      const parsed = await readJsonBody(response);
+      if (!parsed.ok) {
+        return fail(0, parsed.codigo);
+      }
+      if (!isReservaPublicaResponse(parsed.body)) {
+        return fail(response.status, 'INVALID_RESPONSE');
+      }
+      return { ok: true, data: parsed.body };
+    },
   };
 }
 

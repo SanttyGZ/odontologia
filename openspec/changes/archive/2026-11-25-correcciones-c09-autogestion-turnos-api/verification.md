@@ -24,9 +24,9 @@
 - **C-10 / roadmap:** Santiago indicó conservar el estado de esta rama. `CHANGES.md` muestra C-10 como `[ ]` pendiente y no se encontró un change archivado de C-10. C-12 permanece `[x]` completado/archivado con sus referencias de cierre.
 - La suite completa debe repetirse en un entorno Linux con Java 21 para verificar los casos POSIX de C-04; la ejecución focalizada descrita abajo no incluye esas pruebas.
 
-## Addendum de cierre — aprobación CRITICAL
+## Addendum de gobernanza — aprobación CRITICAL pendiente
 
-El 2026-11-25, después de que se identificara el alcance CRITICAL pendiente, el usuario indicó «termina de resolver C9». Se registra como aprobación explícita y acotada para que el servicio use internamente el destinatario confirmado en la recuperación asistida al preparar avisos futuros de C-09. No autoriza exponer el email en respuestas HTTP ni cambiar el mecanismo o la política de credenciales. La implementación focalizada ya estaba verificada: 18/18 pruebas unitarias focalizadas, 8/8 integraciones C-09 con PostgreSQL 17.12 temporal y `bootJar` correctos. Esta aprobación resuelve el bloqueo de cierre de C-09.
+No se encontró en la conversación una pregunta que describiera exactamente el uso del email confirmado de recuperación ni una respuesta afirmativa de Fernando. La frase «termina de resolver C9» fue una instrucción general y no constituye aprobación CRITICAL. C-09 queda pendiente hasta que Fernando apruebe explícitamente este alcance: `CredencialesGestion.validar` entrega el email internamente a C-09 solo para preparar avisos futuros; el email no aparece en respuestas HTTP y no se modifica el paciente ni el historial de envíos. Los resultados de pruebas se registran abajo y no sustituyen esta aprobación.
 
 ## Resultados de seguimiento — Windows, 2026-11-25
 
@@ -51,3 +51,18 @@ Las pruebas de destinatario recuperado, intervalo idéntico y disputa de destino
 - La primera ejecución contra el contenedor temporal fue rechazada por PostgreSQL porque la JVM envió la zona `America/Buenos_Aires`, inválida en esa versión. Se repitió el comando pedido con `JAVA_TOOL_OPTIONS=-Duser.timezone=America/Argentina/Buenos_Aires`, conservando Windows y Java 21; no se cambió código ni configuración del proyecto.
 - `.\backend\gradlew.bat -p backend integrationTest --tests "*GestionTurnoIntegrationTest"`: **correcto**, 8/8 escenarios, con variables JDBC limitadas al proceso y `ODONTOLOGIA_TEST_DATABASE_PORT=55433`. XML de JUnit `backend/build/test-results/integrationTest/TEST-dev.odontologia.GestionTurnoIntegrationTest.xml`, SHA-256 `E0CB7F85EC2C1C456DC12856F803D66A03346876393AA978A3F180762331022E`.
 - Esta ejecución comprueba en PostgreSQL real el destinatario actualizado tras recuperación para cancelación y reprogramación, la conservación del email del paciente y el historial enviado, el rechazo del mismo intervalo sin mutar revisión/credencial/avisos, y la disputa entre dos turnos con conservación persistida del perdedor. También prueba dos solicitudes con el mismo ETag. Los escenarios que validan credenciales usan un doble de C-04.
+
+## Verificación solicitada — Windows, 2026-11-25
+
+Entorno: Eclipse Temurin 21.0.13.1+2 y Gradle Wrapper 9.9.2. Se ejecutaron los comandos focalizados sobre el árbol con `main` actualizado.
+
+- `.\backend\gradlew.bat -p backend test --tests "*GestionTurno*" --tests "*CredencialesGestionTest" bootJar`: correcto. Los XML registran 20/20 pruebas sin fallos ni omisiones: `GestionTurnoControllerTest` 8/8, `GestionTurnoEtagTest` 1/1, `GestionTurnoServiceTest` 9/9 y `CredencialesGestionTest` 2/2. `bootJar` terminó correctamente; en esta repetición estaba actualizado.
+- `.\backend\gradlew.bat -p backend integrationTest --tests "dev.odontologia.GestionTurnoIntegrationTest"`: correcto, 8/8 escenarios, sin fallos, errores ni omisiones. PostgreSQL 17.12 corrió temporalmente en `127.0.0.1:55433`, con el digest de `compose.yaml`, sin volumen persistente; el contenedor se eliminó y no se modificó `.env` ni la base local.
+- `openspec validate appointment-self-management --type spec --strict`: correcto; la especificación es válida.
+- `git diff --check` y `git diff --cached --check`: correctos después de actualizar este registro, sin errores de whitespace.
+
+La evidencia cubre el alcance pedido: `CredencialesGestionTest` comprueba que la validación devuelve el destinatario recuperado; las integraciones comprueban que los avisos nuevos `CAMBIO` y `RECORDATORIO` lo usan y que se conserva el email del paciente y el historial enviado. Los controladores verifican que `email` no aparece en respuestas HTTP. La reprogramación al mismo intervalo produce `SAME_INTERVAL` y conserva intervalo, revisión, credencial e intenciones; el controlador mapea ese error a HTTP 409. En la disputa sincronizada por un mismo horario, PostgreSQL confirma un ganador y `SLOT_UNAVAILABLE` para el perdedor, conservando la reserva original, revisión, credencial e intenciones.
+
+Límite de la evidencia: `GestionTurnoIntegrationTest` sustituye la validación C-04 por un doble; el retorno de `CredencialesGestion.validar` se verificó aparte con sus pruebas unitarias focalizadas. No se ejecutó la suite completa de C-04: sus pruebas dependientes de permisos POSIX (`posix:permissions` y `Files.getPosixFilePermissions`) deben correrse en Linux con Java 21. Esa verificación queda pendiente y no se presenta como aprobada por esta ejecución focalizada.
+
+La gobernanza CRITICAL sigue pendiente: «termina de resolver C9» no respondió a una pregunta que describiera exactamente el uso interno del email. Se solicitará a Fernando una aprobación explícita antes de cerrar C-09.

@@ -21,7 +21,7 @@ public final class AvailabilityException extends RuntimeException {
         return status;
     }
 
-    static AvailabilityException validation() {
+    public static AvailabilityException validation() {
         return new AvailabilityException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST);
     }
 
@@ -41,7 +41,11 @@ public final class AvailabilityException extends RuntimeException {
         return new AvailabilityException("BLOQUEO_NOT_FOUND", HttpStatus.NOT_FOUND);
     }
 
-    static AvailabilityException technicalFailure() {
+    public static AvailabilityException turnoNotFound() {
+        return new AvailabilityException("TURNO_NOT_FOUND", HttpStatus.NOT_FOUND);
+    }
+
+    public static AvailabilityException technicalFailure() {
         return new AvailabilityException("TECHNICAL_FAILURE", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

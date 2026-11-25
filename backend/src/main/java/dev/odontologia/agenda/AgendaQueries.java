@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import dev.odontologia.agenda.DentistAgendaDtos.AgendaTurnoResumenResponse;
+import dev.odontologia.agenda.DentistAgendaDtos.PacienteBasicoResponse;
+import dev.odontologia.agenda.DentistAgendaDtos.TurnoDetalleResponse;
 import org.springframework.dao.support.DataAccessUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -85,6 +88,60 @@ public class AgendaQueries {
     public List<Turno> ocupados(UUID agendaId, Instant inicio, Instant fin) {
         return jdbc.query(TURNOS + "AND estado = 'CONFIRMADO' AND inicio < ? AND fin > ? ORDER BY inicio, id",
                 AgendaQueries::readTurno, agendaId, atUtc(fin), atUtc(inicio));
+    }
+
+    public List<AgendaTurnoResumenResponse> findAgendaTurnos(UUID agendaId, UUID consultorioId,
+                                                             Instant inicio, Instant fin) {
+        return jdbc.query("""
+                SELECT t.id, t.motivo_id, m.nombre AS motivo_nombre, t.inicio, t.fin,
+                       t.duracion_reservada_minutos, t.estado,
+                       p.nombre AS paciente_nombre, p.apellido AS paciente_apellido
+                FROM turno t
+                JOIN motivo_consulta m ON m.id = t.motivo_id AND m.agenda_id = t.agenda_id
+                JOIN paciente p ON p.id = t.paciente_id AND p.consultorio_id = ?
+                WHERE t.agenda_id = ? AND t.inicio < ? AND t.fin > ?
+                ORDER BY t.inicio, t.id
+                """, (row, index) -> new AgendaTurnoResumenResponse(
+                row.getObject("id", UUID.class),
+                row.getObject("motivo_id", UUID.class),
+                row.getString("motivo_nombre"),
+                instant(row, "inicio"),
+                instant(row, "fin"),
+                row.getInt("duracion_reservada_minutos"),
+                Turno.Estado.valueOf(row.getString("estado")),
+                row.getString("paciente_nombre"),
+                row.getString("paciente_apellido")),
+                consultorioId, agendaId, atUtc(fin), atUtc(inicio));
+    }
+
+    public Optional<TurnoDetalleResponse> findTurnoDetalle(UUID agendaId, UUID consultorioId, UUID turnoId) {
+        return DataAccessUtils.optionalResult(jdbc.query("""
+                SELECT t.id, t.motivo_id, m.nombre AS motivo_nombre, t.inicio, t.fin,
+                       t.duracion_reservada_minutos, t.estado, t.revision, t.creado_en, t.cancelado_en,
+                       p.nombre AS paciente_nombre, p.apellido AS paciente_apellido,
+                       p.email AS paciente_email, p.telefono AS paciente_telefono, p.dni AS paciente_dni
+                FROM turno t
+                JOIN motivo_consulta m ON m.id = t.motivo_id AND m.agenda_id = t.agenda_id
+                JOIN paciente p ON p.id = t.paciente_id AND p.consultorio_id = ?
+                WHERE t.agenda_id = ? AND t.id = ?
+                """, (row, index) -> new TurnoDetalleResponse(
+                row.getObject("id", UUID.class),
+                row.getObject("motivo_id", UUID.class),
+                row.getString("motivo_nombre"),
+                instant(row, "inicio"),
+                instant(row, "fin"),
+                row.getInt("duracion_reservada_minutos"),
+                Turno.Estado.valueOf(row.getString("estado")),
+                row.getInt("revision"),
+                instant(row, "creado_en"),
+                instant(row, "cancelado_en"),
+                new PacienteBasicoResponse(
+                        row.getString("paciente_nombre"),
+                        row.getString("paciente_apellido"),
+                        row.getString("paciente_email"),
+                        row.getString("paciente_telefono"),
+                        row.getString("paciente_dni"))),
+                consultorioId, agendaId, turnoId));
     }
 
     private static Turno readTurno(ResultSet row, int index) throws SQLException {

@@ -9,6 +9,7 @@ export type ApiErrorCode =
   | 'MOTIVO_NOT_FOUND'
   | 'BLOQUEO_NOT_FOUND'
   | 'CONFIGURATION_CONFLICT'
+  | 'SLOT_UNAVAILABLE'
   | 'AGENDA_BUSY'
   | 'TECHNICAL_FAILURE'
   | 'NETWORK_ERROR'
@@ -59,6 +60,44 @@ export interface BloqueoInput {
   inicio: string;
   fin: string;
   descripcion: string | null;
+}
+
+export interface HorarioDisponible {
+  inicio: string;
+  fin: string;
+}
+
+export interface DisponibilidadPublicaParams {
+  motivoId: string;
+  desde?: string;
+  hasta?: string;
+}
+
+export interface DisponibilidadPublicaResponse {
+  motivoId: string;
+  duracionMinutos: number;
+  zonaHoraria: string;
+  horarios: HorarioDisponible[];
+}
+
+export interface ReservaPublicaInput {
+  motivoId: string;
+  inicio: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string;
+  dni: string;
+}
+
+export interface ReservaPublicaResponse {
+  turnoId: string;
+  motivoId: string;
+  inicio: string;
+  fin: string;
+  duracionReservadaMinutos: number;
+  estado: 'CONFIRMADO';
+  notificacionEstado: 'PENDIENTE';
 }
 
 export interface ErrorResponse {
@@ -165,6 +204,43 @@ export function isErrorResponse(value: unknown): value is ErrorResponse {
   return isNonEmptyString(value.codigo);
 }
 
+export function isHorarioDisponible(value: unknown): value is HorarioDisponible {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return isNonEmptyString(value.inicio) && isNonEmptyString(value.fin);
+}
+
+export function isDisponibilidadPublicaResponse(
+  value: unknown,
+): value is DisponibilidadPublicaResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.motivoId) &&
+    isValidDuration(value.duracionMinutos) &&
+    isNonEmptyString(value.zonaHoraria) &&
+    Array.isArray(value.horarios) &&
+    value.horarios.every(isHorarioDisponible)
+  );
+}
+
+export function isReservaPublicaResponse(value: unknown): value is ReservaPublicaResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.turnoId) &&
+    isNonEmptyString(value.motivoId) &&
+    isNonEmptyString(value.inicio) &&
+    isNonEmptyString(value.fin) &&
+    isValidDuration(value.duracionReservadaMinutos) &&
+    value.estado === 'CONFIRMADO' &&
+    value.notificacionEstado === 'PENDIENTE'
+  );
+}
+
 const KNOWN_ERROR_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'VALIDATION_ERROR',
   'INVALID_LOGIN_REQUEST',
@@ -176,6 +252,7 @@ const KNOWN_ERROR_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'MOTIVO_NOT_FOUND',
   'BLOQUEO_NOT_FOUND',
   'CONFIGURATION_CONFLICT',
+  'SLOT_UNAVAILABLE',
   'AGENDA_BUSY',
   'TECHNICAL_FAILURE',
   'NETWORK_ERROR',
