@@ -24,6 +24,8 @@ Ver `proposal.md` para la motivación y `specs/appointment-self-management/spec.
 
 Extender el resultado interno de validación de C-04 con el destinatario de la recuperación más reciente, consultado por `recuperacion_enlace.orden DESC`. C-09 usará ese valor para avisos nuevos y recurrirá al email vigente del paciente solo si no existe recuperación. No habrá escritura sobre el paciente ni actualización retroactiva de intenciones o intentos. Esto conserva la responsabilidad de C-04 por sus datos y evita leer su tabla privada desde C-09. La credencial, el token y la respuesta HTTP no incorporan ni exponen el email.
 
+**Aprobación CRITICAL:** el usuario autorizó esta ampliación acotada el 2026-11-25 al pedir terminar C-09 después de identificarle expresamente el alcance pendiente. La autorización cubre que el servicio interno reciba el destinatario confirmado para preparar avisos futuros; no amplía las respuestas HTTP, el mecanismo de credenciales ni la política de recuperación.
+
 **Alternativa descartada:** consultar `recuperacion_enlace` directamente desde el servicio de C-09, porque acopla la autogestión al esquema privado de C-04. Tampoco se reutilizarán los destinatarios de avisos previos, porque podrían ser anteriores a una recuperación.
 
 ### D-02 — Rechazar el mismo intervalo después de calcular la duración vigente

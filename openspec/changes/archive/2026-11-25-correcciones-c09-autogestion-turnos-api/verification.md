@@ -24,6 +24,10 @@
 - **C-10 / roadmap:** Santiago indicó conservar el estado de esta rama. `CHANGES.md` muestra C-10 como `[ ]` pendiente y no se encontró un change archivado de C-10. C-12 permanece `[x]` completado/archivado con sus referencias de cierre.
 - La suite completa debe repetirse en un entorno Linux con Java 21 para verificar los casos POSIX de C-04; la ejecución focalizada descrita abajo no incluye esas pruebas.
 
+## Addendum de cierre — aprobación CRITICAL
+
+El 2026-11-25, después de que se identificara el alcance CRITICAL pendiente, el usuario indicó «termina de resolver C9». Se registra como aprobación explícita y acotada para que el servicio use internamente el destinatario confirmado en la recuperación asistida al preparar avisos futuros de C-09. No autoriza exponer el email en respuestas HTTP ni cambiar el mecanismo o la política de credenciales. La implementación focalizada ya estaba verificada: 18/18 pruebas unitarias focalizadas, 8/8 integraciones C-09 con PostgreSQL 17.12 temporal y `bootJar` correctos. Esta aprobación resuelve el bloqueo de cierre de C-09.
+
 ## Resultados de seguimiento — Windows, 2026-11-25
 
 Estado al inicio: Eclipse Temurin Java `21.0.13.1+2`, Gradle Wrapper `9.9.2` y PostgreSQL local de prueba **sin configurar para el harness**. No existe `.env` en la raíz y faltaban `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` y `ODONTOLOGIA_INTEGRATION_DATABASES`; por eso el primer intento no pudo verificar la instancia en `127.0.0.1:5433`. No se creó ni modificó configuración local.

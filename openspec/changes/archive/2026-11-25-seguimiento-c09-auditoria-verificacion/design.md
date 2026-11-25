@@ -24,6 +24,8 @@ Ver `proposal.md`. C-09 y su corrección están archivados. La especificación a
 
 La aprobación explícita de D-07 en el diseño archivado de C-09 cubre solo el UUID opaco del enlace en el resultado interno de validación; el mismo registro deja cualquier ampliación fuera de alcance. La aprobación previa de C-04 para la recuperación y persistencia no cubre el nuevo campo de email expuesto a C-09. Se registra la revisión humana pendiente y no se modifica el mecanismo de credenciales.
 
+**Addendum de cierre (2026-11-25):** esa revisión pendiente se resolvió cuando el usuario autorizó terminar C-09 tras conocer el alcance exacto. La autorización, limitada al uso interno del email confirmado para avisos futuros, quedó registrada en el [diseño de correcciones C-09](../2026-11-25-correcciones-c09-autogestion-turnos-api/design.md) y en su [verificación](../2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md).
+
 ### PB-06
 
 Santiago informó el 2026-11-25 que Fernando confirmó que PB-06 puede quedar para C-14. C-09 mantiene el rechazo `409 MANAGEMENT_WINDOW_CLOSED`. El canal operativo concreto todavía debe acordarse antes de implementar C-14; no se agregan excepciones ni operaciones manuales.
