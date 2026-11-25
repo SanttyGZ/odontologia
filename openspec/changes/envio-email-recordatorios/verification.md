@@ -16,6 +16,21 @@ Reloj de la campaña: 2027-01-05 10:00 UTC. Base aislada con datos ficticios.
 
 La campaña registró un solo intento para el despacho combinado, con tipos `CONFIRMACION+RECORDATORIO`. C-14 sigue pendiente, incluida la apertura funcional de los enlaces y la autogestión en navegador.
 
+## Corrección de la ruta de autogestión
+
+Con el compositor original, la prueba focalizada ejecutó 7 casos y falló en los 6 que esperaban un enlace. El informe mostró `/gestion#credencial-ficticia` donde se esperaba `/gestionar-turno#credencial-ficticia`. El caso sin material de gestión pasó.
+
+Tras corregir la ruta, los 7 casos de composición pasaron. Se comprobó la URL completa para confirmación, reprogramación, recordatorio, combinado y recuperación. Una segunda URL base confirmó que el host y el puerto provienen de la configuración. La cancelación y la confirmación sin material quedaron sin enlace. El combinado conservó un único aviso con un único enlace.
+
+La ejecución directa en WSL usó Temurin 21.0.13.1+2, PostgreSQL 17.12 en un contenedor temporal con puerto de loopback, `APP_BASE_URL=http://127.0.0.1:5173` y `APP_MAIL_ENABLED=false`. Pasaron `test` (118 casos), `integrationTest` (57 casos) y `bootJar`, con salida 0. No se enviaron correos.
+
+| Ejecución directa | Directorio bajo `~/.cache/` en WSL | Salida | SHA-256 de `result.log` redactado |
+|---|---|---|---|
+| Regresión con la ruta anterior | `c11-ruta.KBnoGDYD` | 1 | `75389a339b588df831ce9d5eec878e81048768cb8b3431fb896ad6fc86d59ab6` |
+| Suite con la ruta corregida | `c11-ruta.ACYQdaGu` | 0 | `6f17500e98c7ee501dbf37975fbab064f41a10dd850c62a30e767b26ad41b1fd` |
+
+La comprobación de esta corrección cubre la composición. Una revisión independiente confirmó el alcance del diff, las huellas de ambos registros y que los dos archivos Java coinciden byte a byte con los de la ejecución exitosa. Las ejecuciones quedaron registradas con captura directa. El ejecutable Active Stack disponible carece de `evidence-capture` y `evidence-state`, por lo que sigue pendiente la corroboración formal de la procedencia de esas ejecuciones. **EM-04 y la tarea 4.1 siguen pendientes** hasta abrir el enlace desde un correo recibido en el buzón autorizado con C-14 integrado.
+
 ## Pendientes de cierre
 
 - Completar la apertura funcional y la autogestión en navegador cuando se integre C-14. El 2026-11-25 se consultó el remoto: el main de upstream y el HEAD de ignacio/c11 estaban en 4120042ce23782ab2d85ad75dab6e7a96cf754ce, con C-14 pendiente y sin la ruta de autogestión integrada. La tarea 4.1 y C-11 siguen abiertos por ese criterio.

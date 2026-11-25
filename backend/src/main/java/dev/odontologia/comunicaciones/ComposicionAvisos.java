@@ -44,7 +44,7 @@ final class ComposicionAvisos {
         String texto = detalle + "\nHorario del turno: " + fecha.format(intento.inicio())
                 + " a " + fecha.format(intento.fin()) + " (" + fecha.getZone() + ").";
         if (material != null) {
-            String enlace = UriComponentsBuilder.fromUri(baseUrl).pathSegment("gestion")
+            String enlace = UriComponentsBuilder.fromUri(baseUrl).pathSegment("gestionar-turno")
                     .fragment(material).build().encode().toUriString();
             texto += "\nGestioná el turno desde la aplicación local: " + enlace;
         }

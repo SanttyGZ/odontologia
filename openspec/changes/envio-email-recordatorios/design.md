@@ -73,6 +73,8 @@ Usar una base aislada con datos ficticios y configurar Temurin 21, las variables
 )
 ```
 
-El sondeo usa exclusión de sesión PostgreSQL para distinguir un intento abandonado de otro emisor activo. Después de conseguir la exclusión, recupera los intentos abiertos del buzón como inciertos y consulta avisos vigentes por lotes. La autorización conserva la coordinación de C-05. La composición entrega el material como fragmento de la ruta local `/gestion`, cuya interfaz corresponde a C-14.
+El sondeo usa exclusión de sesión PostgreSQL para distinguir un intento abandonado de otro emisor activo. Después de conseguir la exclusión, recupera los intentos abiertos del buzón como inciertos y consulta avisos vigentes por lotes. La autorización conserva la coordinación de C-05.
+
+Cuando hay material de gestión, el compositor usa `APP_BASE_URL` y agrega el segmento `gestionar-turno` con la credencial en el fragmento. Con la base local habitual, un ejemplo con material ficticio es `http://127.0.0.1:5173/gestionar-turno#credencial-ficticia`. La cancelación se compone sin enlace. La confirmación y el recordatorio combinados conservan un único mensaje con un solo enlace. La interfaz que abre el enlace corresponde a C-14.
 
 Ignacio puede diagnosticar por identificador de intento con `resultado`, `autorizado_en` y `terminado_en` de `intento_notificacion`. Para evidencia, exportar solo esos campos y el identificador del despacho. Evitar volcar el destinatario y el contenido.
