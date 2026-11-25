@@ -8,6 +8,7 @@ final class GestionTurnoException extends RuntimeException {
         LINK_NOT_AVAILABLE(HttpStatus.NOT_FOUND),
         MANAGEMENT_WINDOW_CLOSED(HttpStatus.CONFLICT),
         SLOT_UNAVAILABLE(HttpStatus.CONFLICT),
+        SAME_INTERVAL(HttpStatus.CONFLICT),
         AGENDA_BUSY(HttpStatus.CONFLICT),
         TURN_VERSION_MISMATCH(HttpStatus.PRECONDITION_FAILED),
         PRECONDITION_REQUIRED(HttpStatus.PRECONDITION_REQUIRED),
@@ -46,6 +47,10 @@ final class GestionTurnoException extends RuntimeException {
 
     static GestionTurnoException slotUnavailable() {
         return new GestionTurnoException(Codigo.SLOT_UNAVAILABLE);
+    }
+
+    static GestionTurnoException sameInterval() {
+        return new GestionTurnoException(Codigo.SAME_INTERVAL);
     }
 
     static GestionTurnoException agendaBusy() {

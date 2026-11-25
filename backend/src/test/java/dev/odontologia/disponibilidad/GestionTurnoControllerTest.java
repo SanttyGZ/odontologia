@@ -154,6 +154,25 @@ class GestionTurnoControllerTest {
     }
 
     @Test
+    void sameIntervalErrorIs409GenericAndNotCached() throws Exception {
+        var sameInterval = new GestionTurnoException(GestionTurnoException.Codigo.valueOf("SAME_INTERVAL"));
+        var input = new ReprogramacionInput(java.time.Instant.parse("2030-01-09T12:00:00Z"));
+        doThrow(sameInterval).when(service).reprogramar(TOKEN, ETAG, input);
+
+        mvc.perform(post(URL + "/reprogramacion")
+                        .header("X-Management-Token", TOKEN)
+                        .header("If-Match", ETAG)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nuevoInicio":"2030-01-09T12:00:00Z"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.codigo").value("SAME_INTERVAL"))
+                .andExpect(jsonPath("$.message").doesNotExist());
+    }
+
+    @Test
     void staleVersionIs412GenericAndNotCached() throws Exception {
         doThrow(GestionTurnoException.versionMismatch()).when(service).cancelar(TOKEN, ETAG);
 

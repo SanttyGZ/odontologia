@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -33,10 +34,13 @@ class CredencialesGestionTest {
         when(fila.getObject("inicio", OffsetDateTime.class)).thenReturn(inicio.atOffset(ZoneOffset.UTC));
         when(fila.getObject("fin", OffsetDateTime.class)).thenReturn(fin.atOffset(ZoneOffset.UTC));
         when(fila.getInt("revision")).thenReturn(3);
+        when(fila.getString("destinatario_recuperacion")).thenReturn("odontologo.confirmado@example.invalid");
+        String[] consulta = new String[1];
 
         JdbcTemplate jdbc = new JdbcTemplate() {
             @Override
             public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+                consulta[0] = sql;
                 try {
                     return List.of(rowMapper.mapRow(fila, 0));
                 } catch (SQLException failure) {
@@ -53,6 +57,9 @@ class CredencialesGestionTest {
         assertThat(autorizado.id()).isEqualTo(turno);
         assertThat(autorizado.referenciaCredencial()).isEqualTo(referencia);
         assertThat(autorizado.referenciaCredencial()).isNotEqualTo(autorizado.id());
+        assertThat(autorizado.destinatarioRecuperacion())
+                .isEqualTo(Optional.of("odontologo.confirmado@example.invalid"));
+        assertThat(consulta[0]).contains("FROM recuperacion_enlace r", "ORDER BY r.orden DESC LIMIT 1");
     }
 
     @Test

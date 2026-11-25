@@ -91,4 +91,3 @@ Una cancelación o reprogramación confirmada SHALL preparar las intenciones de 
 #### Scenario: Cambio confirmado sin envío síncrono
 - **WHEN** se confirma una cancelación o reprogramación válida
 - **THEN** la API informa la notificación como `PENDIENTE`, la intención `CAMBIO` corresponde al resultado y revisión confirmados, y cualquier recordatorio anterior queda inelegible según C-05 sin invocar SMTP
-

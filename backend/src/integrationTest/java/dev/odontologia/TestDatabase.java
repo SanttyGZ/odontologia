@@ -8,7 +8,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 final class TestDatabase implements AutoCloseable {
 
-    private static final String BASE = "jdbc:postgresql://127.0.0.1:5433/";
+    private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("ODONTOLOGIA_TEST_DATABASE_PORT", "5433"));
+    private static final String BASE = "jdbc:postgresql://127.0.0.1:" + PORT + "/";
     private final String name = "odontologia_c02_" + UUID.randomUUID().toString().replace("-", "");
     private final String user = System.getenv("SPRING_DATASOURCE_USERNAME");
     private final String password = System.getenv("SPRING_DATASOURCE_PASSWORD");

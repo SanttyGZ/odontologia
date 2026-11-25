@@ -133,6 +133,47 @@ class GestionTurnoServiceTest {
     }
 
     @Test
+    void rejectsReprogrammingToTheSameIntervalAfterCalculatingCurrentDuration() {
+        Turno turno = turno(AHORA.plusSeconds(48 * 60 * 60), 5, Turno.Estado.CONFIRMADO);
+        autorizar(turno, turno.revision());
+        String etag = service.consultar(TOKEN).etag();
+        when(agendaQueries.findMotivo(AGENDA_ID, MOTIVO_ID))
+                .thenReturn(Optional.of(new MotivoConsulta(MOTIVO_ID, AGENDA_ID, "Control", 30)));
+        when(agendaQueries.franjas(AGENDA_ID)).thenReturn(List.of(new FranjaSemanal(
+                UUID.randomUUID(), AGENDA_ID, DayOfWeek.WEDNESDAY, LocalTime.of(9, 0),
+                LocalTime.of(17, 0), FranjaSemanal.Tipo.ATENCION)));
+        when(agendaQueries.bloqueos(eq(AGENDA_ID), any(Instant.class), any(Instant.class))).thenReturn(List.of());
+        when(agendaQueries.ocupados(eq(AGENDA_ID), any(Instant.class), any(Instant.class))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.reprogramar(TOKEN, etag, new ReprogramacionInput(turno.inicio())))
+                .isInstanceOfSatisfying(GestionTurnoException.class,
+                        failure -> assertThat(failure.codigo().name()).isEqualTo("SAME_INTERVAL"));
+
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+        verify(avisos, never()).cambio(any(), any(), any());
+    }
+
+    @Test
+    void permitsTheSameStartWhenCurrentMotifDurationProducesADifferentEnd() {
+        Instant start = Instant.parse("2030-01-09T12:00:00Z");
+        Turno turno = turno(start, 5, Turno.Estado.CONFIRMADO);
+        autorizar(turno, turno.revision());
+        String etag = service.consultar(TOKEN).etag();
+        when(agendaQueries.findMotivo(AGENDA_ID, MOTIVO_ID))
+                .thenReturn(Optional.of(new MotivoConsulta(MOTIVO_ID, AGENDA_ID, "Control", 45)));
+        when(agendaQueries.franjas(AGENDA_ID)).thenReturn(List.of(new FranjaSemanal(
+                UUID.randomUUID(), AGENDA_ID, DayOfWeek.WEDNESDAY, LocalTime.of(9, 0),
+                LocalTime.of(17, 0), FranjaSemanal.Tipo.ATENCION)));
+        when(agendaQueries.bloqueos(eq(AGENDA_ID), any(Instant.class), any(Instant.class))).thenReturn(List.of());
+        when(agendaQueries.ocupados(eq(AGENDA_ID), any(Instant.class), any(Instant.class))).thenReturn(List.of());
+
+        var result = service.reprogramar(TOKEN, etag, new ReprogramacionInput(start));
+
+        assertThat(result.cuerpo().horaInicio()).isEqualTo(LocalTime.of(9, 0));
+        assertThat(result.cuerpo().horaFin()).isEqualTo(LocalTime.of(9, 45));
+    }
+
+    @Test
     void hidesAnUnavailableCredentialAndRejectsAnUnavailableRevision() {
         when(credenciales.validar(TOKEN)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.cancelar(TOKEN, "\"opaque\""))
@@ -203,7 +244,7 @@ class GestionTurnoServiceTest {
     void doesNotManageARevokedOrNonconfirmedTurn() {
         Turno canceled = turno(AHORA.plusSeconds(48 * 60 * 60), 5, Turno.Estado.CANCELADO);
         when(credenciales.validar(TOKEN)).thenReturn(Optional.of(new CredencialesGestion.TurnoAutorizado(
-                TURNO_ID, canceled.inicio(), canceled.fin(), canceled.revision(), CREDENCIAL_ID)));
+                TURNO_ID, canceled.inicio(), canceled.fin(), canceled.revision(), CREDENCIAL_ID, Optional.empty())));
         when(agendaQueries.findTurno(AGENDA_ID, TURNO_ID)).thenReturn(Optional.of(canceled));
 
         assertThatThrownBy(() -> service.cancelar(TOKEN, "\"opaque\""))
@@ -217,7 +258,7 @@ class GestionTurnoServiceTest {
 
     private void autorizar(Turno turno, int revisionAutorizada) {
         when(credenciales.validar(TOKEN)).thenReturn(Optional.of(new CredencialesGestion.TurnoAutorizado(
-                TURNO_ID, turno.inicio(), turno.fin(), revisionAutorizada, CREDENCIAL_ID)));
+                TURNO_ID, turno.inicio(), turno.fin(), revisionAutorizada, CREDENCIAL_ID, Optional.empty())));
         when(agendaQueries.findTurno(AGENDA_ID, TURNO_ID)).thenReturn(Optional.of(turno));
     }
 

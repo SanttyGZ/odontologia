@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import dev.odontologia.agenda.AgendaQueries;
@@ -45,7 +46,8 @@ public final class GestionTurnoService {
     private final PreparacionAvisos preparacionAvisos;
     private final Clock clock;
 
-    private record TurnoGestionado(Turno turno, UUID referenciaCredencial) {
+    private record TurnoGestionado(Turno turno, UUID referenciaCredencial,
+                                   Optional<String> destinatarioRecuperacion) {
     }
 
     public GestionTurnoService(JdbcTemplate jdbc, AgendaQueries agendaQueries,
@@ -99,7 +101,7 @@ public final class GestionTurnoService {
                 }
 
                 credenciales.revocar(turno.id());
-                prepararAviso(turno, nuevaRevision, ahora, null, null);
+                prepararAviso(turno, nuevaRevision, ahora, null, null, gestionado.destinatarioRecuperacion());
                 return cancelacion(turno.inicio(), turno.fin(), "CANCELADO", NOTIFICACION_PENDIENTE,
                         config.consultorio().zonaHoraria());
             });
@@ -133,6 +135,9 @@ public final class GestionTurnoService {
                 } catch (RuntimeException invalidRange) {
                     throw GestionTurnoException.slotUnavailable();
                 }
+                if (nuevoInicio.equals(turno.inicio()) && nuevoFin.equals(turno.fin())) {
+                    throw GestionTurnoException.sameInterval();
+                }
                 List<BloqueoAgenda> bloqueos = agendaQueries.bloqueos(turno.agendaId(), nuevoInicio, nuevoFin);
                 List<Turno> ocupados = agendaQueries.ocupados(turno.agendaId(), nuevoInicio, nuevoFin).stream()
                         .filter(other -> !other.id().equals(turno.id()))
@@ -153,7 +158,8 @@ public final class GestionTurnoService {
                     throw GestionTurnoException.versionMismatch();
                 }
 
-                prepararAviso(turno, nuevaRevision, ahora, nuevoInicio, gestionado.referenciaCredencial());
+                prepararAviso(turno, nuevaRevision, ahora, nuevoInicio, gestionado.referenciaCredencial(),
+                        gestionado.destinatarioRecuperacion());
                 Consulta resultado = consulta(nuevoInicio, nuevoFin, "CONFIRMADO",
                         acciones(nuevoInicio, ahora), config.consultorio().zonaHoraria());
                 String etag = GestionTurnoEtag.generar(turno.id().toString(), nuevaRevision, resultado);
@@ -165,10 +171,11 @@ public final class GestionTurnoService {
         }
     }
 
-    private void prepararAviso(Turno turno, int revision, Instant ahora, Instant nuevoInicio, UUID credencialId) {
-        String email = pacienteQueries.find(turno.pacienteId())
+    private void prepararAviso(Turno turno, int revision, Instant ahora, Instant nuevoInicio, UUID credencialId,
+                               Optional<String> destinatarioRecuperacion) {
+        String email = destinatarioRecuperacion.orElseGet(() -> pacienteQueries.find(turno.pacienteId())
                 .map(paciente -> paciente.email())
-                .orElseThrow(GestionTurnoException::technicalFailure);
+                .orElseThrow(GestionTurnoException::technicalFailure));
         preparacionAvisos.cambio(new PreparacionAvisos.Evento(UUID.randomUUID(), turno.id(), revision, email, ahora),
                 nuevoInicio, credencialId);
     }
@@ -182,7 +189,7 @@ public final class GestionTurnoService {
         if (turno.revision() != autorizado.revision()) {
             throw GestionTurnoException.versionMismatch();
         }
-        return new TurnoGestionado(turno, autorizado.referenciaCredencial());
+        return new TurnoGestionado(turno, autorizado.referenciaCredencial(), autorizado.destinatarioRecuperacion());
     }
 
     private static void exigirPrecondicionPresente(String ifMatch) {

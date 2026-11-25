@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Los changes C-01 a C-09 están implementados, verificados y archivados (incluido el seguimiento `correcciones-c06-configuracion-disponibilidad-api`). C-10 y C-13 tienen sus dependencias completas.
+- Los changes C-01 a C-09 están implementados, verificados y archivados (incluidos `correcciones-c06-configuracion-disponibilidad-api` y `correcciones-c09-autogestion-turnos-api`). C-10 y C-13 tienen sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -73,7 +73,7 @@ AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 par
 |---|---|---|
 | PB-01 | C-07/C-08/C-09 para ventana temporal, zona, calendario y límites de reserva; PB-01 ya no bloquea C-06 | Resolver extremos 24 h/30 días, zona, calendario, medianoche y franjas antes de calcular o aceptar reservas; no inferir de la máquina. |
 | PB-04 | C-02 para esquema de pacientes y C-08 | Crear/reutilizar, validar y corregir; no añadir unicidad natural, fusión ni sobrescritura automática por DNI/email. |
-| PB-06 | C-09 y C-14 para el contacto fuera de plazo | Definir contacto operativo; no incluir alta manual ni excepciones del odontólogo sin ampliar el alcance expresamente. |
+| PB-06 | C-14 para el contacto fuera de plazo | C-09 conserva `409 MANAGEMENT_WINDOW_CLOSED`; acordar con el odontólogo el contacto operativo antes de C-14. No incluir alta manual ni excepciones sin ampliar el alcance expresamente. |
 | PB-07 | C-04, C-09 y C-14 | Vigencia, invalidación, datos visibles y recuperación; sin cuenta ni verificación previa obligatoria del email. |
 | PB-08 | C-05, C-08 y C-09 | Repeticiones, resultados inciertos y cambios simultáneos; no inferir reactivación de cancelados. |
 | PB-09 | C-05 y C-11 | Confirmación y recordatorio al reservar exactamente a 24 horas. |
@@ -368,12 +368,12 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-09] `autogestion-turnos-api`
 
-- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-autogestion-turnos-api](openspec/changes/archive/2026-11-25-autogestion-turnos-api/proposal.md); 11/11 tareas. Verificado con 68 pruebas unitarias, 49 de integración PostgreSQL, `bootJar`, validación OpenSpec estricta y `git diff --check`. El envío SMTP permanece en C-11 y la interfaz de autogestión en C-14.
+- **Estado**: `[x]` change base y seguimiento de correcciones completados y archivados el 2026-11-25: [C-09](openspec/changes/archive/2026-11-25-autogestion-turnos-api/proposal.md), [correcciones C-09, 9/9 tareas y verificación](openspec/changes/archive/2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md). La verificación focalizada de C-09 pasó; los límites de plataforma de las suites completas están registrados en el informe. El envío SMTP permanece en C-11 y la interfaz de autogestión en C-14.
 - **Scope**:
-  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables; usar PB-05 ya definida en C-06.
+  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-07 y PB-08 aplicables; conservar `409 MANAGEMENT_WINDOW_CLOSED` y dejar PB-06 pendiente para C-14 hasta acordar el contacto operativo; usar PB-05 ya definida en C-06.
   - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
   - Cancelar sin borrado físico; reprogramar conservando identificador y estado `CONFIRMADO`, con nuevo intervalo y revisión. Coordinar intención de aviso y recordatorio según C-05; el original debe conservarse ante cualquier rechazo o fallo del cambio.
-  - Verificar plazo, contacto fuera de plazo sin excepciones inventadas, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La protección de credenciales se reutiliza; cualquier cambio en su semántica vuelve a revisión CRITICAL. CT-01 y FL-05/FL-06/FL-07.
+  - Verificar plazo, rechazo `409 MANAGEMENT_WINDOW_CLOSED`, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. No se inventa contacto fuera de plazo ni excepción manual; PB-06 queda pendiente para C-14. La protección de credenciales se reutiliza; cualquier ampliación de su alcance requiere revisión CRITICAL. CT-01 y FL-05/FL-06/FL-07.
 - **Dependencias**: C-08.
 - **Governance**: MEDIO — estados y reglas con checkpoints; no autoriza cambiar generación/transporte/validación de enlaces de C-04.
 - **Leer antes**:
@@ -458,7 +458,8 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 - **Scope**:
   - Implementar apertura de enlace, consulta mínima del turno, solicitud expresa de cancelación y elección/confirmación de nuevo horario; consumir C-04/C-09 sin mutaciones al cargar o previsualizar.
   - Integrar transporte y manejo de material privado exclusivamente conforme al contrato revisado de C-04. Presentar diseño y obtener aprobación explícita de código para esta integración; no guardar enlaces en logs ni añadir persistencia de credenciales por conveniencia.
-  - Mostrar enlace inválido/vencido, fuera de plazo con contacto operativo acordado, destino ocupado y original conservado si falla; recuperación según PB-07, sin agregar cuenta o verificación previa.
+  - Consultar horarios únicamente para el motivo del turno autorizado mediante un contrato protegido aún pendiente de aprobación CRITICAL; no aceptar `motivoId` elegido por el cliente ni ampliar los datos de `GET /api/gestion/turno` antes de esa aprobación.
+  - Mostrar enlace inválido/vencido, fuera de plazo con contacto operativo acordado, destino ocupado y original conservado si falla; recuperación según PB-07, sin agregar cuenta o verificación previa. PB-06 sigue pendiente hasta acordar el contacto operativo con el odontólogo.
   - Verificar US-007/US-008/US-009 sobre enlaces locales reales, incluida apertura desde emails y ausencia de cambios por previsualización; comprobar teclado y pantallas pequeña/grande sin solicitar mockups.
 - **Dependencias**: C-09.
 - **Governance**: CRITICO — manejo frontend de credenciales/enlaces y datos protegidos; aprobación de código separada del roadmap.
