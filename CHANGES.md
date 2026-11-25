@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Los changes C-01 a C-08 están implementados, verificados y archivados (incluido el seguimiento `correcciones-c06-configuracion-disponibilidad-api`). C-09, C-10 y C-13 tienen sus dependencias completas.
+- Los changes C-01 a C-09 están implementados, verificados y archivados (incluido el seguimiento `correcciones-c06-configuracion-disponibilidad-api`). C-10 y C-13 tienen sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -368,7 +368,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-09] `autogestion-turnos-api`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-autogestion-turnos-api](openspec/changes/archive/2026-11-25-autogestion-turnos-api/proposal.md); 11/11 tareas. Verificado con 68 pruebas unitarias, 49 de integración PostgreSQL, `bootJar`, validación OpenSpec estricta y `git diff --check`. El envío SMTP permanece en C-11 y la interfaz de autogestión en C-14.
 - **Scope**:
   - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables; usar PB-05 ya definida en C-06.
   - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
