@@ -399,7 +399,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-11] `envio-email-recordatorios`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[ ]` abierto, 6/7 tareas en OpenSpec. Recepción en Gmail y recuperación SMTP comprobadas. La tarea 4.1 queda pendiente de verificar la apertura funcional de enlaces tras integrar C-14. [Evidencia](openspec/changes/envio-email-recordatorios/verification.md).
 - **Scope**:
   - Resolver AT-07: proponer proveedor/cuenta, remitente y destinatarios habilitados; verificar condiciones oficiales gratuitas al elegirlos. Revisar configuración SMTP, tiempos finitos y secretos aportados por canal local; no crear cuentas, contratar ni enviar desde esta fase de roadmap.
   - Implementar US-010/US-011/US-012 y FL-08: componer confirmación con enlaces, cambio por cancelación, cambio por reprogramación y recordatorio 24 horas antes; emisor/tarea internos consumen intenciones durables y la política PB-09/PB-10/PB-11 acordada.
