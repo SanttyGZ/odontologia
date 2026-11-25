@@ -17,6 +17,8 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
     getBloqueos: vi.fn(),
     createBloqueo: vi.fn(),
     deleteBloqueo: vi.fn(),
+    getAgenda: vi.fn(),
+    getTurnoDetalle: vi.fn(),
     getPublicMotivos: vi.fn(),
     getPublicDisponibilidad: vi.fn(),
     createPublicTurno: vi.fn(),

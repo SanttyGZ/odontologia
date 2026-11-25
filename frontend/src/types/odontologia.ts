@@ -1,13 +1,17 @@
+import { isValidIsoCalendarDate } from '../utils/timezone';
+
 export type ApiErrorCode =
   | 'VALIDATION_ERROR'
   | 'INVALID_LOGIN_REQUEST'
   | 'INVALID_CREDENTIALS'
   | 'SESSION_REQUIRED'
   | 'CSRF_INVALID'
+  | 'ACCESS_DENIED'
   | 'ACCESS_NOT_CONFIGURED'
   | 'ACCESS_UNAVAILABLE'
   | 'MOTIVO_NOT_FOUND'
   | 'BLOQUEO_NOT_FOUND'
+  | 'TURNO_NOT_FOUND'
   | 'CONFIGURATION_CONFLICT'
   | 'SLOT_UNAVAILABLE'
   | 'AGENDA_BUSY'
@@ -98,6 +102,56 @@ export interface ReservaPublicaResponse {
   duracionReservadaMinutos: number;
   estado: 'CONFIRMADO';
   notificacionEstado: 'PENDIENTE';
+}
+
+export type AgendaVista = 'DIA' | 'SEMANA';
+export type TurnoEstado = 'CONFIRMADO' | 'CANCELADO';
+
+export interface AgendaQueryParams {
+  vista?: AgendaVista;
+  fecha?: string;
+}
+
+export interface AgendaTurnoResumen {
+  id: string;
+  motivoId: string;
+  motivoNombre: string;
+  inicio: string;
+  fin: string;
+  duracionReservadaMinutos: number;
+  estado: TurnoEstado;
+  pacienteNombre: string;
+  pacienteApellido: string;
+}
+
+export interface AgendaResponse {
+  vista: AgendaVista;
+  desde: string;
+  hasta: string;
+  zonaHoraria: string;
+  turnos: AgendaTurnoResumen[];
+}
+
+export interface PacienteBasico {
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string;
+  dni: string;
+}
+
+export interface TurnoDetalleResponse {
+  id: string;
+  motivoId: string;
+  motivoNombre: string;
+  inicio: string;
+  fin: string;
+  duracionReservadaMinutos: number;
+  estado: TurnoEstado;
+  revision: number;
+  creadoEn: string;
+  canceladoEn: string | null;
+  paciente: PacienteBasico;
 }
 
 export interface ErrorResponse {
@@ -241,16 +295,95 @@ export function isReservaPublicaResponse(value: unknown): value is ReservaPublic
   );
 }
 
+function isTurnoEstado(value: unknown): value is TurnoEstado {
+  return value === 'CONFIRMADO' || value === 'CANCELADO';
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+export function isAgendaTurnoResumen(value: unknown): value is AgendaTurnoResumen {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.motivoId) &&
+    isNonEmptyString(value.motivoNombre) &&
+    isNonEmptyString(value.inicio) &&
+    isNonEmptyString(value.fin) &&
+    isPositiveInteger(value.duracionReservadaMinutos) &&
+    isTurnoEstado(value.estado) &&
+    isNonEmptyString(value.pacienteNombre) &&
+    isNonEmptyString(value.pacienteApellido)
+  );
+}
+
+export function isAgendaResponse(value: unknown): value is AgendaResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    (value.vista === 'DIA' || value.vista === 'SEMANA') &&
+    typeof value.desde === 'string' &&
+    isValidIsoCalendarDate(value.desde) &&
+    typeof value.hasta === 'string' &&
+    isValidIsoCalendarDate(value.hasta) &&
+    isNonEmptyString(value.zonaHoraria) &&
+    Array.isArray(value.turnos) &&
+    value.turnos.every(isAgendaTurnoResumen)
+  );
+}
+
+export function isPacienteBasico(value: unknown): value is PacienteBasico {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.nombre) &&
+    isNonEmptyString(value.apellido) &&
+    isNonEmptyString(value.email) &&
+    isNonEmptyString(value.telefono) &&
+    isNonEmptyString(value.dni)
+  );
+}
+
+export function isTurnoDetalleResponse(value: unknown): value is TurnoDetalleResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.motivoId) &&
+    isNonEmptyString(value.motivoNombre) &&
+    isNonEmptyString(value.inicio) &&
+    isNonEmptyString(value.fin) &&
+    isPositiveInteger(value.duracionReservadaMinutos) &&
+    isTurnoEstado(value.estado) &&
+    isNonNegativeInteger(value.revision) &&
+    isNonEmptyString(value.creadoEn) &&
+    (value.canceladoEn === null || isNonEmptyString(value.canceladoEn)) &&
+    isPacienteBasico(value.paciente)
+  );
+}
+
 const KNOWN_ERROR_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'VALIDATION_ERROR',
   'INVALID_LOGIN_REQUEST',
   'INVALID_CREDENTIALS',
   'SESSION_REQUIRED',
   'CSRF_INVALID',
+  'ACCESS_DENIED',
   'ACCESS_NOT_CONFIGURED',
   'ACCESS_UNAVAILABLE',
   'MOTIVO_NOT_FOUND',
   'BLOQUEO_NOT_FOUND',
+  'TURNO_NOT_FOUND',
   'CONFIGURATION_CONFLICT',
   'SLOT_UNAVAILABLE',
   'AGENDA_BUSY',

@@ -51,6 +51,8 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
     getPublicDisponibilidad: vi.fn().mockResolvedValue({ ok: true, data: sampleDisponibilidad }),
     createPublicTurno: vi.fn(),
     clearCsrfToken: vi.fn(),
+    getAgenda: vi.fn(),
+    getTurnoDetalle: vi.fn(),
     ...overrides,
   };
 }
