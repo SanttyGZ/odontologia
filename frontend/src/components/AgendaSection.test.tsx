@@ -868,4 +868,151 @@ describe('AgendaSection', () => {
     expect(within(detailPanel).getByText('Confirmado')).toBeTruthy();
     expect(document.body.textContent ?? '').not.toMatch(/reprogramado/i);
   });
+
+  it('invalida consulta fetchAgenda en vuelo al borrar #agenda-fecha, mantiene lista vacia, detalle cerrado, sin loading y permite elegir nueva fecha valida', async () => {
+    const user = userEvent.setup();
+    const delayedNext = createDeferred<ApiResult<AgendaResponse>>();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockReturnValueOnce(delayedNext.promise)
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { ...sampleAgendaDia, desde: '2026-12-20', hasta: '2026-12-20' },
+      });
+
+    render(<AgendaSection apiClient={makeClient({ getAgenda })} onSessionExpired={vi.fn()} />);
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Disparar consulta demorada al navegar con Siguiente
+    await user.click(screen.getByRole('button', { name: /siguiente/i }));
+    expect(screen.getByText(/cargando agenda/i)).toBeTruthy();
+
+    // Borrar la fecha antes de que resuelva la promesa pendiente
+    const dateInput = screen.getByLabelText(/fecha/i);
+    fireEvent.change(dateInput, { target: { value: '' } });
+
+    // Resolver la solicitud pendiente con sampleAgendaDia
+    delayedNext.resolve({ ok: true, data: sampleAgendaDia });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/fecha válida/i);
+    });
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.queryByText(/Lucía Gómez/)).toBeNull();
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.queryByText(/cargando agenda/i)).toBeNull();
+
+    // Seleccionar otra fecha valida recupera la agenda y limpia el error
+    fireEvent.change(dateInput, { target: { value: '2026-12-20' } });
+    expect(await screen.findByText(/^20\/12\/2026$/)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('list')).toBeTruthy();
+  });
+
+  it('invalida handleRefresh (Actualizar) en vuelo al borrar #agenda-fecha, descarta agenda/detalle tardios y permite Reintentar', async () => {
+    const user = userEvent.setup();
+    const delayedAgendaRefresh = createDeferred<ApiResult<AgendaResponse>>();
+    const delayedDetalleRefresh = createDeferred<ApiResult<TurnoDetalleResponse>>();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockReturnValueOnce(delayedAgendaRefresh.promise)
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia });
+    const getTurnoDetalle = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleDetalleConfirmado })
+      .mockReturnValueOnce(delayedDetalleRefresh.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Disparar Actualizar en vuelo
+    await user.click(screen.getByRole('button', { name: /actualizar/i }));
+    expect(screen.getByText(/cargando agenda/i)).toBeTruthy();
+
+    // Borrar la fecha antes de que resuelvan las promesas de Actualizar
+    const dateInput = screen.getByLabelText(/fecha/i);
+    fireEvent.change(dateInput, { target: { value: '' } });
+
+    // Resolver ambas promesas pendientes
+    delayedAgendaRefresh.resolve({ ok: true, data: sampleAgendaDia });
+    delayedDetalleRefresh.resolve({ ok: true, data: sampleDetalleConfirmado });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/fecha válida/i);
+    });
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.queryByText(/Lucía Gómez/)).toBeNull();
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.queryByText(/cargando agenda/i)).toBeNull();
+
+    // Reintentar recupera la agenda y limpia el error
+    await user.click(screen.getByRole('button', { name: /reintentar/i }));
+    expect(await screen.findByText(/Lucía Gómez/)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('list')).toBeTruthy();
+  });
+
+  it('no invoca onSessionExpired si handleRefresh fue invalidado por fecha invalida antes de resolver con 401', async () => {
+    const user = userEvent.setup();
+    const onSessionExpired = vi.fn();
+    const delayedAgendaRefresh = createDeferred<ApiResult<AgendaResponse>>();
+    const delayedDetalleRefresh = createDeferred<ApiResult<TurnoDetalleResponse>>();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockReturnValueOnce(delayedAgendaRefresh.promise);
+    const getTurnoDetalle = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleDetalleConfirmado })
+      .mockReturnValueOnce(delayedDetalleRefresh.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={onSessionExpired}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: /actualizar/i }));
+    const dateInput = screen.getByLabelText(/fecha/i);
+    fireEvent.change(dateInput, { target: { value: '' } });
+
+    delayedAgendaRefresh.resolve({
+      ok: false,
+      status: 401,
+      codigo: 'SESSION_REQUIRED',
+      message: 'Tu sesión expiró o no está activa. Volvé a ingresar.',
+    });
+    delayedDetalleRefresh.resolve({
+      ok: false,
+      status: 401,
+      codigo: 'SESSION_REQUIRED',
+      message: 'Tu sesión expiró o no está activa. Volvé a ingresar.',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toMatch(/fecha válida/i);
+    });
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.queryByText(/cargando agenda/i)).toBeNull();
+  });
 });

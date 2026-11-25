@@ -166,17 +166,21 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
       return;
     }
 
-    if (!agendaResult.ok && agendaResult.codigo === 'SESSION_REQUIRED') {
-      onSessionExpired(agendaResult.message);
-      return;
-    }
-    if (!detalleResult.ok && detalleResult.codigo === 'SESSION_REQUIRED') {
-      onSessionExpired(detalleResult.message);
+    const isLatestAgenda = agendaRequestId === latestAgendaRequestIdRef.current;
+    const isLatestDetalle = detalleRequestId === latestDetalleRequestIdRef.current;
+
+    if (!isLatestAgenda && !isLatestDetalle) {
       return;
     }
 
-    const isLatestAgenda = agendaRequestId === latestAgendaRequestIdRef.current;
-    const isLatestDetalle = detalleRequestId === latestDetalleRequestIdRef.current;
+    if (isLatestAgenda && !agendaResult.ok && agendaResult.codigo === 'SESSION_REQUIRED') {
+      onSessionExpired(agendaResult.message);
+      return;
+    }
+    if (isLatestDetalle && !detalleResult.ok && detalleResult.codigo === 'SESSION_REQUIRED') {
+      onSessionExpired(detalleResult.message);
+      return;
+    }
 
     if (isLatestAgenda) {
       setLoadingAgenda(false);
@@ -236,6 +240,8 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
   function handleDateInputChange(value: string): void {
     setDateInput(value);
     if (!isValidIsoCalendarDate(value)) {
+      latestAgendaRequestIdRef.current += 1;
+      setLoadingAgenda(false);
       setAgenda(null);
       clearDetalleState();
       setAgendaError('Ingresá una fecha válida en formato AAAA-MM-DD.');

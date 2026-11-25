@@ -59,7 +59,7 @@ La interfaz SHALL ofrecer un botón «Actualizar» para volver a consultar `GET 
 
 ### Requirement: AW-04 Distinción de agenda vacía, carga, fallos de consulta y expiración de sesión
 
-La interfaz SHALL distinguir carga (`aria-busy`), agenda vacía (`turnos: []`), errores de consulta y `401 SESSION_REQUIRED`. Al cambiar fecha o vista (`DIA`/`SEMANA`), SHALL conservar el detalle solo si el turno pertenece al nuevo resultado, cerrándolo si queda fuera, si está vacío o si falla la consulta, e invalidando respuestas demoradas tras cambiar de período o cerrar manualmente.
+La interfaz SHALL distinguir carga (`aria-busy`), agenda vacía (`turnos: []`), errores y `401 SESSION_REQUIRED`. Al cambiar fecha o vista (`DIA`/`SEMANA`), SHALL conservar el detalle solo si pertenece al resultado, cerrarlo si queda fuera, vacío o falla, invalidar respuestas demoradas al cambiar período o cerrar detalle, y SHALL invalidar consultas en vuelo si se borra o invalida la fecha, apagando carga y conservando el mensaje.
 
 #### Scenario: Período sin turnos muestra estado vacío y no error
 
@@ -90,6 +90,11 @@ La interfaz SHALL distinguir carga (`aria-busy`), agenda vacía (`turnos: []`), 
 
 - **WHEN** `GET /api/odontologo/agenda` o `GET /api/odontologo/turnos/{turnoId}` responde `401 SESSION_REQUIRED`
 - **THEN** la interfaz ejecuta el manejador de sesión expirada de `C-12`, limpia el estado autenticado y vuelve a mostrar el formulario de ingreso
+
+#### Scenario: Borrar o invalidar la fecha durante una consulta en curso descarta la respuesta pendiente
+
+- **WHEN** hay una consulta `GET /api/odontologo/agenda` en curso (con o sin detalle abierto), el odontólogo borra o invalida la fecha antes de que termine y luego se resuelve esa solicitud pendiente
+- **THEN** la interfaz descarta la respuesta pendiente, mantiene la lista vacía, el detalle cerrado, `loadingAgenda` desactivado y el mensaje de fecha inválida visible, dejando habilitado elegir otra fecha o reintentar
 
 ### Requirement: AW-05 Interfaz de solo lectura, accesibilidad por teclado y diseño adaptable
 
