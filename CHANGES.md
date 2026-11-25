@@ -439,7 +439,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-13] `reserva-paciente-web`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-reserva-paciente-web](openspec/changes/archive/2026-11-25-reserva-paciente-web/proposal.md); 5/5 tareas y [verificación](openspec/changes/archive/2026-11-25-reserva-paciente-web/verification.md). Verificado con 9/9 archivos (51/51 tests Vitest/RTL), `tsc -b` estricto (`TS-01`), `vite build`, `openspec validate --all --strict --no-interactive` y `git diff --check`. El recorrido integrado con frontend servido por Spring Boot y correo real SMTP queda para `C-16`.
 - **Scope**:
   - Crear recorrido React de motivo/período/horario, formulario de los cinco datos obligatorios y resultado de reserva, consumiendo C-07/C-08; interfaz de US-004/US-005 y resultado de US-010.
   - Mantener acceso sin cuenta y sin verificación previa. Mostrar indisponibilidad, conflicto concurrente, validación y resultado incierto de acuerdo al backend, evitando presentar como libre o confirmado un resultado que no se obtuvo.

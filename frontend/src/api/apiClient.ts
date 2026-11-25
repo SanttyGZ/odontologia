@@ -4,19 +4,25 @@ import type {
   Bloqueo,
   BloqueoInput,
   CsrfResponse,
+  DisponibilidadPublicaParams,
+  DisponibilidadPublicaResponse,
   HorarioResponse,
   Motivo,
   MotivoInput,
+  ReservaPublicaInput,
+  ReservaPublicaResponse,
   SessionResponse,
 } from '../types/odontologia';
 import {
   isBloqueo,
   isBloqueoList,
   isCsrfResponse,
+  isDisponibilidadPublicaResponse,
   isErrorResponse,
   isHorarioResponse,
   isMotivo,
   isMotivoList,
+  isReservaPublicaResponse,
   isSessionResponse,
   toApiErrorCode,
 } from '../types/odontologia';
@@ -34,6 +40,11 @@ export interface ApiClient {
   getBloqueos: () => Promise<ApiResult<Bloqueo[]>>;
   createBloqueo: (input: BloqueoInput) => Promise<ApiResult<Bloqueo>>;
   deleteBloqueo: (bloqueoId: string) => Promise<ApiResult<void>>;
+  getPublicMotivos: () => Promise<ApiResult<Motivo[]>>;
+  getPublicDisponibilidad: (
+    params: DisponibilidadPublicaParams,
+  ) => Promise<ApiResult<DisponibilidadPublicaResponse>>;
+  createPublicTurno: (input: ReservaPublicaInput) => Promise<ApiResult<ReservaPublicaResponse>>;
   clearCsrfToken: () => void;
 }
 
@@ -244,6 +255,43 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       mutateJson('POST', '/api/odontologo/bloqueos', input, isBloqueo),
     deleteBloqueo: (bloqueoId: string) =>
       mutateJson<void>('DELETE', `/api/odontologo/bloqueos/${encodeURIComponent(bloqueoId)}`, undefined, null),
+    getPublicMotivos: () => getJson('/api/public/motivos', isMotivoList),
+    getPublicDisponibilidad: (params: DisponibilidadPublicaParams) => {
+      const search = new URLSearchParams();
+      search.set('motivoId', params.motivoId);
+      if (typeof params.desde === 'string' && params.desde.trim().length > 0) {
+        search.set('desde', params.desde.trim());
+      }
+      if (typeof params.hasta === 'string' && params.hasta.trim().length > 0) {
+        search.set('hasta', params.hasta.trim());
+      }
+      return getJson(`/api/public/disponibilidad?${search.toString()}`, isDisponibilidadPublicaResponse);
+    },
+    createPublicTurno: async (input: ReservaPublicaInput) => {
+      let response: Response;
+      try {
+        response = await fetchImpl('/api/public/turnos', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(input),
+        });
+      } catch {
+        return fail(0, 'NETWORK_ERROR');
+      }
+
+      if (!response.ok) {
+        return parseErrorResponse(response);
+      }
+
+      const body = await parseJsonSafe(response);
+      if (!isReservaPublicaResponse(body)) {
+        return fail(response.status, 'INVALID_RESPONSE');
+      }
+      return { ok: true, data: body };
+    },
   };
 }
 
