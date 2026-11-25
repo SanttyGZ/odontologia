@@ -10,6 +10,11 @@ export type ApiErrorCode =
   | 'BLOQUEO_NOT_FOUND'
   | 'CONFIGURATION_CONFLICT'
   | 'SLOT_UNAVAILABLE'
+  | 'LINK_NOT_AVAILABLE'
+  | 'MANAGEMENT_WINDOW_CLOSED'
+  | 'SAME_INTERVAL'
+  | 'TURN_VERSION_MISMATCH'
+  | 'PRECONDITION_REQUIRED'
   | 'AGENDA_BUSY'
   | 'TECHNICAL_FAILURE'
   | 'NETWORK_ERROR'
@@ -76,6 +81,42 @@ export interface DisponibilidadPublicaParams {
 export interface DisponibilidadPublicaResponse {
   motivoId: string;
   duracionMinutos: number;
+  zonaHoraria: string;
+  horarios: HorarioDisponible[];
+}
+
+export interface GestionTurno {
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  estado: 'CONFIRMADO' | 'CANCELADO';
+  acciones: string[];
+}
+
+export interface GestionTurnoActual {
+  turno: GestionTurno;
+  etag: string;
+}
+
+export interface GestionTurnoCambio {
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  estado: 'CONFIRMADO' | 'CANCELADO';
+  notificacionEstado: 'PENDIENTE';
+}
+
+export interface GestionTurnoReprogramacion extends GestionTurnoCambio {
+  turnoId: string;
+  etag: string;
+}
+
+export interface DisponibilidadGestionParams {
+  desde?: string;
+  hasta?: string;
+}
+
+export interface DisponibilidadGestionResponse {
   zonaHoraria: string;
   horarios: HorarioDisponible[];
 }
@@ -211,6 +252,56 @@ export function isHorarioDisponible(value: unknown): value is HorarioDisponible 
   return isNonEmptyString(value.inicio) && isNonEmptyString(value.fin);
 }
 
+export function isGestionTurno(value: unknown): value is GestionTurno {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.fecha) &&
+    isNonEmptyString(value.horaInicio) &&
+    isNonEmptyString(value.horaFin) &&
+    (value.estado === 'CONFIRMADO' || value.estado === 'CANCELADO') &&
+    Array.isArray(value.acciones) &&
+    value.acciones.every((accion) => typeof accion === 'string')
+  );
+}
+
+export function isGestionTurnoCambio(value: unknown): value is GestionTurnoCambio {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.fecha) &&
+    isNonEmptyString(value.horaInicio) &&
+    isNonEmptyString(value.horaFin) &&
+    (value.estado === 'CONFIRMADO' || value.estado === 'CANCELADO') &&
+    value.notificacionEstado === 'PENDIENTE'
+  );
+}
+
+export function isGestionTurnoReprogramacion(
+  value: unknown,
+): value is Omit<GestionTurnoReprogramacion, 'etag'> {
+  return (
+    isGestionTurnoCambio(value) &&
+    isRecord(value) &&
+    isNonEmptyString(value.turnoId)
+  );
+}
+
+export function isDisponibilidadGestionResponse(
+  value: unknown,
+): value is DisponibilidadGestionResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    isNonEmptyString(value.zonaHoraria) &&
+    Array.isArray(value.horarios) &&
+    value.horarios.every(isHorarioDisponible)
+  );
+}
+
 export function isDisponibilidadPublicaResponse(
   value: unknown,
 ): value is DisponibilidadPublicaResponse {
@@ -253,6 +344,11 @@ const KNOWN_ERROR_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'BLOQUEO_NOT_FOUND',
   'CONFIGURATION_CONFLICT',
   'SLOT_UNAVAILABLE',
+  'LINK_NOT_AVAILABLE',
+  'MANAGEMENT_WINDOW_CLOSED',
+  'SAME_INTERVAL',
+  'TURN_VERSION_MISMATCH',
+  'PRECONDITION_REQUIRED',
   'AGENDA_BUSY',
   'TECHNICAL_FAILURE',
   'NETWORK_ERROR',

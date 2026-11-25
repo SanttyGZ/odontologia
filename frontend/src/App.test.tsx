@@ -30,6 +30,10 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
     getPublicMotivos: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     getPublicDisponibilidad: vi.fn(),
     createPublicTurno: vi.fn(),
+    getGestionTurno: vi.fn(),
+    getGestionDisponibilidad: vi.fn(),
+    cancelarGestionTurno: vi.fn(),
+    reprogramarGestionTurno: vi.fn(),
     clearCsrfToken: vi.fn(),
     ...overrides,
   };
@@ -291,5 +295,31 @@ describe('App - flujo de sesion', () => {
     await user.click(screen.getByRole('button', { name: /acceso odontólogo/i }));
     expect(await screen.findByRole('button', { name: /ingresar/i })).toBeTruthy();
     expect(checkSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('en /gestionar-turno quita el fragmento y no requiere sesion del odontologo', async () => {
+    window.history.replaceState(null, '', '/gestionar-turno#credencial-privada');
+    const checkSession = vi.fn();
+    const getGestionTurno = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        turno: {
+          fecha: '2030-01-08',
+          horaInicio: '09:00:00',
+          horaFin: '09:30:00',
+          estado: 'CONFIRMADO',
+          acciones: [],
+        },
+        etag: '"turno-r1"',
+      },
+    });
+
+    render(<App client={makeClient({ checkSession, getGestionTurno })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Tu turno' })).toBeTruthy();
+    expect(checkSession).not.toHaveBeenCalled();
+    expect(getGestionTurno).toHaveBeenCalledWith('credencial-privada');
+    expect(window.location.hash).toBe('');
+    window.history.replaceState(null, '', '/');
   });
 });
