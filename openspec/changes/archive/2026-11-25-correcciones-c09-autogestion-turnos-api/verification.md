@@ -19,14 +19,18 @@
 
 - **C-14 / CRITICAL:** aprobar o rechazar antes de implementar el contrato candidato `GET /api/gestion/turno/disponibilidad?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, autenticado con `X-Management-Token` vigente. La API derivaría internamente el `motivoId` del turno autorizado, delegaría el cálculo en C-07 y respondería `200`, `Cache-Control: no-store` y `{ "zonaHoraria": "...", "horarios": [{"inicio":"...", "fin":"..."}] }`; no aceptaría ni expondría `motivoId` o datos adicionales del turno. No se implementó ruta ni se amplió `GET /api/gestion/turno`.
 - **PB-06 / C-14:** Fernando confirmó, según lo informó Santiago el 2026-11-25, que puede quedar para C-14. El canal operativo concreto debe acordarse antes de esa entrega. C-09 conserva `409 MANAGEMENT_WINDOW_CLOSED`; no se agregó canal, alta manual ni excepción.
-- **C-09 / CRITICAL:** la aprobación explícita de D-07 en el [diseño archivado de C-09](../2026-11-25-autogestion-turnos-api/design.md#d-07) cubre solo el UUID opaco en el resultado interno de `CredencialesGestion.validar`. No se encontró aprobación explícita para incluir el email confirmado de recuperación; esa ampliación queda pendiente de revisión humana. La aprobación previa de C-04 sobre recuperación no cubre el nuevo dato expuesto a C-09.
+- **C-09 / CRITICAL, al momento de la auditoría inicial:** la aprobación explícita de D-07 en el [diseño archivado de C-09](../2026-11-25-autogestion-turnos-api/design.md#d-07) cubría solo el UUID opaco en el resultado interno de `CredencialesGestion.validar`. La aprobación posterior de Fernando para el email recuperado está asentada en el addendum de gobernanza más abajo; la aprobación previa de C-04 sobre recuperación no cubría ese dato nuevo.
 - **C-09 / disputa por horario:** AG-05 exige `409 SLOT_UNAVAILABLE` y conservar turno, revisión, credencial e intenciones si otra escritura obtiene primero el intervalo. Se agregó `losingDestinationRaceKeepsOriginalTurnCredentialAndNoticeIntentions`; la ejecución Windows con PostgreSQL real 17.12 pasó y comprobó el estado persistido del turno perdedor. La clase usa dobles para la validación de credenciales de C-04, limitación que permanece para el comportamiento real de `CredencialesGestion.validar`.
 - **C-10 / roadmap:** Santiago indicó conservar el estado de esta rama. `CHANGES.md` muestra C-10 como `[ ]` pendiente y no se encontró un change archivado de C-10. C-12 permanece `[x]` completado/archivado con sus referencias de cierre.
 - La suite completa debe repetirse en un entorno Linux con Java 21 para verificar los casos POSIX de C-04; la ejecución focalizada descrita abajo no incluye esas pruebas.
 
-## Addendum de gobernanza — aprobación CRITICAL pendiente
+## Addendum de gobernanza — aprobación CRITICAL registrada
 
-No se encontró en la conversación una pregunta que describiera exactamente el uso del email confirmado de recuperación ni una respuesta afirmativa de Fernando. La frase «termina de resolver C9» fue una instrucción general y no constituye aprobación CRITICAL. C-09 queda pendiente hasta que Fernando apruebe explícitamente este alcance: `CredencialesGestion.validar` entrega el email internamente a C-09 solo para preparar avisos futuros; el email no aparece en respuestas HTTP y no se modifica el paciente ni el historial de envíos. Los resultados de pruebas se registran abajo y no sustituyen esta aprobación.
+**Pregunta presentada para Fernando (2026-11-25):** «Fernando, ¿aprobás explícitamente que `CredencialesGestion.validar` entregue internamente a C-09 el email que quedó confirmado durante la recuperación asistida, únicamente para preparar avisos futuros? Ese email no aparecerá en respuestas HTTP ni modificará el email del paciente o el historial de envíos. ¿Lo aprobás?»
+
+**Respuesta recibida de Santiago (2026-11-25), atribuida a Fernando:** «fernando dice que lo aprueba».
+
+Se registra la aprobación de Fernando, transmitida por Santiago, con el alcance exacto de la pregunta: destinatario interno para avisos futuros solamente; sin exposición HTTP ni modificación del paciente o del historial de envíos. No autoriza cambiar el mecanismo de credenciales ni la política de recuperación. La aprobación resuelve el bloqueo CRITICAL de C-09.
 
 ## Resultados de seguimiento — Windows, 2026-11-25
 
@@ -65,4 +69,4 @@ La evidencia cubre el alcance pedido: `CredencialesGestionTest` comprueba que la
 
 Límite de la evidencia: `GestionTurnoIntegrationTest` sustituye la validación C-04 por un doble; el retorno de `CredencialesGestion.validar` se verificó aparte con sus pruebas unitarias focalizadas. No se ejecutó la suite completa de C-04: sus pruebas dependientes de permisos POSIX (`posix:permissions` y `Files.getPosixFilePermissions`) deben correrse en Linux con Java 21. Esa verificación queda pendiente y no se presenta como aprobada por esta ejecución focalizada.
 
-La gobernanza CRITICAL sigue pendiente: «termina de resolver C9» no respondió a una pregunta que describiera exactamente el uso interno del email. Se solicitará a Fernando una aprobación explícita antes de cerrar C-09.
+La aprobación CRITICAL quedó registrada en el addendum de gobernanza. «Termina de resolver C9» no se usó como evidencia de aprobación; el cierre se basa en la respuesta posterior de Fernando a la pregunta acotada.

@@ -22,9 +22,9 @@ Ver `proposal.md`. C-09 y su corrección están archivados. La especificación a
 
 ### Aprobación CRITICAL
 
-La aprobación explícita de D-07 en el diseño archivado de C-09 cubre solo el UUID opaco del enlace en el resultado interno de validación; el mismo registro deja cualquier ampliación fuera de alcance. La aprobación previa de C-04 para la recuperación y persistencia no cubre el nuevo campo de email expuesto a C-09. Se registra la revisión humana pendiente y no se modifica el mecanismo de credenciales.
+Al redactarse el seguimiento, la aprobación explícita de D-07 en el diseño archivado de C-09 cubría solo el UUID opaco del enlace en el resultado interno de validación; la aprobación previa de C-04 no cubría el nuevo campo de email expuesto a C-09. La revisión pendiente en ese momento se resolvió con la aprobación posterior de Fernando, registrada con la pregunta y respuesta exactas en la verificación de correcciones C-09.
 
-**Addendum de estado (2026-11-25):** la frase «termina de resolver C9» no respondió a una pregunta que describiera exactamente la ampliación, así que no se registra como aprobación. La revisión CRITICAL sigue pendiente; ver el [diseño de correcciones C-09](../2026-11-25-correcciones-c09-autogestion-turnos-api/design.md) y su [verificación](../2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md).
+**Addendum de estado (2026-11-25):** Santiago informó que Fernando aprobó explícitamente el uso interno del email confirmado de recuperación para avisos futuros, después de recibir la pregunta que delimitó ese alcance. La pregunta y la respuesta transmitida quedaron registradas en el [informe de verificación C-09](../2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md). La sincronización posterior con `upstream/main` conserva los cierres archivados de C-10, C-12 y C-13.
 
 ### PB-06
 
@@ -32,7 +32,7 @@ Santiago informó el 2026-11-25 que Fernando confirmó que PB-06 puede quedar pa
 
 ### Estados del roadmap
 
-En `ramaSanty`, C-10 figura `[ ]` y no se encontró su change archivado. Santiago indicó conservar el estado local pendiente y registrar la discrepancia. C-12 permanece `[x]` con sus enlaces de cierre existentes. C-09 conserva la referencia a la implementación archivada y muestra por separado la revisión CRITICAL pendiente y la verificación de integración no disponible.
+Al momento del seguimiento en `ramaSanty`, C-10 figuraba `[ ]` sin change archivado y C-12 permanecía `[x]` completado/archivado. Tras sincronizar `upstream/main`, C-10 y C-13 también constan completados y archivados en `CHANGES.md`; C-09 conserva sus referencias de implementación y la aprobación CRITICAL posterior ya está registrada.
 
 ### Evidencia de disputa por horario
 
