@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-25
+goal: Alinear las reglas y la implementación acotada de autogestión con el
+  correo confirmado por C-04; proteger estado ante reprogramaciones sin cambio;
+  documentar el límite C-14 sujeto a aprobación CRITICAL.

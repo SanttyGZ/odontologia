@@ -16,7 +16,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 public final class CredencialesGestion {
-    public record TurnoAutorizado(UUID id, Instant inicio, Instant fin, int revision) {}
+    public record TurnoAutorizado(UUID id, Instant inicio, Instant fin, int revision, UUID referenciaCredencial,
+                                  Optional<String> destinatarioRecuperacion) {}
 
     private final JdbcTemplate jdbc;
     private final MaterialEnlace material;
@@ -67,12 +68,16 @@ public final class CredencialesGestion {
             return Optional.empty();
         }
         return jdbc.query("""
-                SELECT t.id, t.inicio, t.fin, t.revision
+                SELECT t.id, t.inicio, t.fin, t.revision, c.id AS referencia_credencial,
+                    (SELECT r.destinatario FROM recuperacion_enlace r
+                        WHERE r.turno_id = t.id ORDER BY r.orden DESC LIMIT 1) AS destinatario_recuperacion
                 FROM credencial_gestion c JOIN turno t ON t.id = c.turno_id
                 WHERE c.verificador = ? AND c.revocada_en IS NULL
                     AND t.estado = 'CONFIRMADO' AND t.fin > ?
                 """, (rs, row) -> new TurnoAutorizado(rs.getObject("id", UUID.class),
-                    instante(rs, "inicio"), instante(rs, "fin"), rs.getInt("revision")),
+                    instante(rs, "inicio"), instante(rs, "fin"), rs.getInt("revision"),
+                    rs.getObject("referencia_credencial", UUID.class),
+                    Optional.ofNullable(rs.getString("destinatario_recuperacion"))),
                 MaterialEnlace.verificador(bytes), ahora()).stream().findFirst();
     }
 
