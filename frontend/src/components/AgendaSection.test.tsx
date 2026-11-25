@@ -600,4 +600,272 @@ describe('AgendaSection', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
   });
+
+  it('cierra el detalle si al cambiar fecha (Siguiente) el turno ya no pertenece al periodo', async () => {
+    const user = userEvent.setup();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          ...sampleAgendaDia,
+          desde: '2026-12-11',
+          hasta: '2026-12-11',
+          turnos: [sampleAgendaDia.turnos[1]!],
+        },
+      });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: /siguiente/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/^11\/12\/2026$/)).toBeTruthy();
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('conserva el detalle al alternar Dia -> Semana si el turno sigue en la respuesta y lo cierra ante periodo vacio', async () => {
+    const user = userEvent.setup();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaSemana })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          ...sampleAgendaSemana,
+          desde: '2026-12-14',
+          hasta: '2026-12-20',
+          turnos: [],
+        },
+      });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Alternar DIA -> SEMANA donde TURNO_1_ID sigue presente
+    await user.click(screen.getByRole('button', { name: /semana/i }));
+    await screen.findByText(/07\/12\/2026 al 13\/12\/2026/);
+    expect(screen.getByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Cambiar a un periodo vacio -> cierra el detalle
+    await user.click(screen.getByRole('button', { name: /siguiente/i }));
+    await screen.findByText(/no hay turnos/i);
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('limpia el detalle abierto si el cambio de periodo falla con 500 TECHNICAL_FAILURE o fecha invalida en input', async () => {
+    const user = userEvent.setup();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        codigo: 'TECHNICAL_FAILURE',
+        message: 'Ocurrió un error técnico en el servidor.',
+      })
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Falla 500 TECHNICAL_FAILURE al cambiar de periodo
+    await user.click(screen.getByRole('button', { name: /siguiente/i }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/error técnico/i);
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+
+    // Reintentar para recuperar la agenda y volver a abrir el detalle
+    await user.click(screen.getByRole('button', { name: /reintentar/i }));
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    // Fecha invalida en el input limpia agenda y detalle anterior
+    const dateInput = screen.getByLabelText(/fecha/i);
+    fireEvent.change(dateInput, { target: { value: '' } });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/fecha válida/i);
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('descarta respuesta demorada de getTurnoDetalle tras cierre manual', async () => {
+    const user = userEvent.setup();
+    const detalleDeferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+    const getTurnoDetalle = vi.fn().mockReturnValueOnce(detalleDeferred.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    const detailPanel = await screen.findByRole('region', { name: /detalle del turno/i });
+
+    await user.click(within(detailPanel).getByRole('button', { name: /cerrar detalle/i }));
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+
+    detalleDeferred.resolve({ ok: true, data: sampleDetalleConfirmado });
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('descarta respuesta demorada de getTurnoDetalle si se cambio a un periodo sin el turno', async () => {
+    const user = userEvent.setup();
+    const detalleDeferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          ...sampleAgendaDia,
+          desde: '2026-12-11',
+          hasta: '2026-12-11',
+          turnos: [],
+        },
+      });
+    const getTurnoDetalle = vi.fn().mockReturnValueOnce(detalleDeferred.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(await screen.findByRole('region', { name: /detalle del turno/i })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: /siguiente/i }));
+    await screen.findByText(/no hay turnos/i);
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+
+    detalleDeferred.resolve({ ok: true, data: sampleDetalleConfirmado });
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('conserva Actualizar cuando el turno sigue en el periodo y descarta respuesta demorada si se cierra manualmente mientras carga detalle', async () => {
+    const user = userEvent.setup();
+    const detalleDeferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia });
+
+    const getTurnoDetalle = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleDetalleConfirmado })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { ...sampleDetalleConfirmado, revision: 3 },
+      })
+      .mockReturnValueOnce(detalleDeferred.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    await screen.findByText(/Revisión:\s*2/i);
+
+    // Actualizar con turno vigente
+    await user.click(screen.getByRole('button', { name: /actualizar/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Revisión:\s*3/i)).toBeTruthy();
+    });
+
+    // Seleccionar otro turno con respuesta demorada y cerrar manualmente antes de resolver
+    await user.click(screen.getByRole('button', { name: /Marcos Pérez/i }));
+    const detailPanel = screen.getByRole('region', { name: /detalle del turno/i });
+    await user.click(within(detailPanel).getByRole('button', { name: /cerrar detalle/i }));
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+
+    detalleDeferred.resolve({ ok: true, data: sampleDetalleCancelado });
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(3);
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+  });
+
+  it('muestra siempre el campo Revision (incluido 0) en turnos confirmados recien reservados y reprogramados sin texto Reprogramado', async () => {
+    const user = userEvent.setup();
+    const detalleRecienReservado: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      revision: 0,
+      canceladoEn: null,
+    };
+    const detalleReprogramado: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      id: TURNO_2_ID,
+      revision: 2,
+      canceladoEn: null,
+    };
+
+    const getTurnoDetalle = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: detalleRecienReservado })
+      .mockResolvedValueOnce({ ok: true, data: detalleReprogramado });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+
+    const detailPanel = await screen.findByRole('region', { name: /detalle del turno/i });
+    expect(within(detailPanel).getByText('Revisión')).toBeTruthy();
+    expect(within(detailPanel).getByText(/Revisión:\s*0/i)).toBeTruthy();
+    expect(within(detailPanel).getByText('Confirmado')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: /Marcos Pérez/i }));
+    await waitFor(() => {
+      expect(within(detailPanel).getByText(/Revisión:\s*2/i)).toBeTruthy();
+    });
+    expect(within(detailPanel).getByText('Confirmado')).toBeTruthy();
+    expect(document.body.textContent ?? '').not.toMatch(/reprogramado/i);
+  });
 });

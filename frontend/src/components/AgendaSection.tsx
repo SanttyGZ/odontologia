@@ -46,6 +46,7 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
 
   const latestAgendaRequestIdRef = useRef<number>(0);
   const latestDetalleRequestIdRef = useRef<number>(0);
+  const selectedTurnoIdRef = useRef<string | null>(null);
   const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
@@ -56,6 +57,8 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
   }, []);
 
   const clearDetalleState = useCallback(() => {
+    latestDetalleRequestIdRef.current += 1;
+    selectedTurnoIdRef.current = null;
     setSelectedTurnoId(null);
     setTurnoDetalle(null);
     setLoadingDetalle(false);
@@ -91,6 +94,14 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
 
       setAgenda(result.data);
       setDateInput(targetFecha ?? result.data.desde);
+
+      const currentSelectedId = selectedTurnoIdRef.current;
+      if (
+        currentSelectedId !== null &&
+        !result.data.turnos.some((turno) => turno.id === currentSelectedId)
+      ) {
+        clearDetalleState();
+      }
     },
     [apiClient, clearDetalleState, onSessionExpired],
   );
@@ -103,6 +114,7 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
     latestDetalleRequestIdRef.current += 1;
     const requestId = latestDetalleRequestIdRef.current;
 
+    selectedTurnoIdRef.current = turnoId;
     setSelectedTurnoId(turnoId);
     setLoadingDetalle(true);
     setDetalleError(null);
@@ -224,6 +236,8 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
   function handleDateInputChange(value: string): void {
     setDateInput(value);
     if (!isValidIsoCalendarDate(value)) {
+      setAgenda(null);
+      clearDetalleState();
       setAgendaError('Ingresá una fecha válida en formato AAAA-MM-DD.');
       return;
     }
@@ -429,12 +443,10 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
                         : 'Cancelado · horario liberado'}
                     </dd>
                   </div>
-                  {turnoDetalle.revision > 0 ? (
-                    <div>
-                      <dt>Revisión</dt>
-                      <dd>Revisión: {turnoDetalle.revision}</dd>
-                    </div>
-                  ) : null}
+                  <div>
+                    <dt>Revisión</dt>
+                    <dd>Revisión: {turnoDetalle.revision}</dd>
+                  </div>
                   <div>
                     <dt>Creado en</dt>
                     <dd>{formatInstantInZone(turnoDetalle.creadoEn, timeZone)}</dd>

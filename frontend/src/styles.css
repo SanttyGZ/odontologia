@@ -262,6 +262,8 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .item-row {
@@ -274,6 +276,8 @@ button:focus-visible {
   border: 1px solid #d7dfe7;
   border-radius: 8px;
   padding: 0.8rem 1rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .badge {
@@ -343,6 +347,8 @@ button:focus-visible {
 
 .agenda-turno-btn {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 0;
   background: transparent;
   padding: 0;
@@ -352,6 +358,8 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .agenda-turno-header {
@@ -360,12 +368,28 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.agenda-turno-header strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .agenda-turno-meta {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.agenda-turno-meta span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .item-row-selected {
@@ -432,6 +456,7 @@ button:focus-visible {
 .agenda-detail-list dd {
   margin: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @media (max-width: 768px) {
