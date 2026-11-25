@@ -13,6 +13,8 @@ import dev.odontologia.disponibilidad.AvailabilityErrorAdvice;
 import dev.odontologia.disponibilidad.AvailabilityException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -221,5 +223,100 @@ class DentistAgendaControllerTest {
         mvc.perform(get("/api/odontologo/turnos/{turnoId}", TURNO_CONFIRMADO_ID))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().json("{\"codigo\":\"TECHNICAL_FAILURE\"}", true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "",
+            " ",
+            "2026-11-26Z",
+            "2026-11-26-03:00",
+            "2026-02-30",
+            "+10000-01-01",
+            "+999999999-12-31"
+    })
+    void getAgendaRejectsInvalidFechaBeforeCallingService(String fecha) throws Exception {
+        mvc.perform(get("/api/odontologo/agenda").param("fecha", fecha))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("{\"codigo\":\"VALIDATION_ERROR\"}", true));
+
+        mvc.perform(get("/api/odontologo/agenda").param("vista", "SEMANA").param("fecha", fecha))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("{\"codigo\":\"VALIDATION_ERROR\"}", true));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void getAgendaAcceptsStrictIsoDateInDayAndWeek() throws Exception {
+        LocalDate fecha = LocalDate.of(2026, 11, 26);
+        when(service.agenda("DIA", fecha)).thenReturn(new AgendaResponse(
+                "DIA", fecha, fecha, "America/Argentina/Mendoza", List.of()));
+        when(service.agenda("SEMANA", fecha)).thenReturn(new AgendaResponse(
+                "SEMANA", LocalDate.of(2026, 11, 23), LocalDate.of(2026, 11, 29),
+                "America/Argentina/Mendoza", List.of()));
+
+        mvc.perform(get("/api/odontologo/agenda").param("vista", "DIA").param("fecha", "2026-11-26"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vista").value("DIA"))
+                .andExpect(jsonPath("$.desde").value("2026-11-26"))
+                .andExpect(jsonPath("$.hasta").value("2026-11-26"));
+
+        mvc.perform(get("/api/odontologo/agenda").param("vista", "SEMANA").param("fecha", "2026-11-26"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vista").value("SEMANA"))
+                .andExpect(jsonPath("$.desde").value("2026-11-23"))
+                .andExpect(jsonPath("$.hasta").value("2026-11-29"));
+
+        verify(service).agenda("DIA", fecha);
+        verify(service).agenda("SEMANA", fecha);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "1-1-1-1-1",
+            "no-es-uuid",
+            "00000000-0000-0000-0000-00000000010",
+            "g0000000-0000-0000-0000-000000000101"
+    })
+    void getTurnoDetalleRejectsMalformedUuidBeforeCallingService(String id) throws Exception {
+        mvc.perform(get("/api/odontologo/turnos/{turnoId}", id))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("{\"codigo\":\"VALIDATION_ERROR\"}", true));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void getTurnoDetalleAcceptsUppercaseAndLowercaseUuid() throws Exception {
+        String upper = "ABCDEF01-2345-6789-ABCD-EF0123456789";
+        UUID upperUuid = UUID.fromString(upper);
+        String missingLower = "abcdef01-2345-6789-abcd-ef0123456780";
+        UUID missingUuid = UUID.fromString(missingLower);
+
+        when(service.turnoDetalle(upperUuid)).thenReturn(new TurnoDetalleResponse(
+                upperUuid,
+                MOTIVO_ID,
+                "Limpieza",
+                Instant.parse("2030-01-09T13:00:00Z"),
+                Instant.parse("2030-01-09T13:30:00Z"),
+                30,
+                Turno.Estado.CONFIRMADO,
+                0,
+                Instant.parse("2030-01-01T10:00:00Z"),
+                null,
+                new PacienteBasicoResponse("Ana", "Perez", "ana@example.com", "+5492610000000", "30111222")));
+        when(service.turnoDetalle(missingUuid)).thenThrow(AvailabilityException.turnoNotFound());
+
+        mvc.perform(get("/api/odontologo/turnos/{turnoId}", upper))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(upperUuid.toString()));
+
+        mvc.perform(get("/api/odontologo/turnos/{turnoId}", missingLower))
+                .andExpect(status().isNotFound())
+                .andExpect(content().json("{\"codigo\":\"TURNO_NOT_FOUND\"}", true));
+
+        verify(service).turnoDetalle(upperUuid);
+        verify(service).turnoDetalle(missingUuid);
     }
 }
