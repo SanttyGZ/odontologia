@@ -27,6 +27,17 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
     getBloqueos: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     createBloqueo: vi.fn(),
     deleteBloqueo: vi.fn(),
+    getAgenda: vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        vista: 'DIA',
+        desde: '2026-12-10',
+        hasta: '2026-12-10',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [],
+      },
+    }),
+    getTurnoDetalle: vi.fn(),
     getPublicMotivos: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     getPublicDisponibilidad: vi.fn(),
     createPublicTurno: vi.fn(),
@@ -238,10 +249,12 @@ describe('App - flujo de sesion', () => {
 
     await user.click(screen.getByRole('button', { name: /guardar horario/i }));
 
+    const tabAgenda = screen.getByRole('tab', { name: /agenda/i }) as HTMLButtonElement;
     const tabMotivos = screen.getByRole('tab', { name: /motivos de consulta/i }) as HTMLButtonElement;
     const tabHorario = screen.getByRole('tab', { name: /horario semanal/i }) as HTMLButtonElement;
     const tabBloqueos = screen.getByRole('tab', { name: /bloqueos/i }) as HTMLButtonElement;
 
+    expect(tabAgenda.disabled).toBe(true);
     expect(tabMotivos.disabled).toBe(true);
     expect(tabHorario.disabled).toBe(true);
     expect(tabBloqueos.disabled).toBe(true);
@@ -291,5 +304,59 @@ describe('App - flujo de sesion', () => {
     await user.click(screen.getByRole('button', { name: /acceso odontólogo/i }));
     expect(await screen.findByRole('button', { name: /ingresar/i })).toBeTruthy();
     expect(checkSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('incluye la pestana Agenda, renderiza AgendaSection y vuelve al ingreso ante 401 SESSION_REQUIRED', async () => {
+    const user = userEvent.setup();
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          vista: 'DIA',
+          desde: '2026-12-10',
+          hasta: '2026-12-10',
+          zonaHoraria: 'America/Argentina/Mendoza',
+          turnos: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        codigo: 'SESSION_REQUIRED',
+        message: 'Tu sesión expiró o no está activa. Volvé a ingresar.',
+      });
+
+    render(<App client={makeClient({ getAgenda })} />);
+
+    const tabAgenda = await screen.findByRole('tab', { name: /^agenda$/i });
+    await user.click(tabAgenda);
+
+    expect(await screen.findByRole('heading', { name: /^agenda$/i })).toBeTruthy();
+    expect(getAgenda).toHaveBeenCalledWith({ vista: 'DIA' });
+
+    await user.click(screen.getByRole('button', { name: /actualizar/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /ingresar/i })).toBeTruthy();
+    });
+    expect(screen.getByRole('alert').textContent).toMatch(/expiró/i);
+  });
+
+  it('permite iniciar directamente en la pestana agenda mediante initialTab', async () => {
+    const getAgenda = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        vista: 'DIA',
+        desde: '2026-12-10',
+        hasta: '2026-12-10',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [],
+      },
+    });
+
+    render(<App initialTab="agenda" client={makeClient({ getAgenda })} />);
+
+    expect(await screen.findByRole('heading', { name: /^agenda$/i })).toBeTruthy();
+    expect(getAgenda).toHaveBeenCalledWith({ vista: 'DIA' });
   });
 });

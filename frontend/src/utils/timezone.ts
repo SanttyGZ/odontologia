@@ -1,4 +1,47 @@
 const DEFAULT_TIME_ZONE = 'America/Argentina/Mendoza';
+const ISO_CALENDAR_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function isValidIsoCalendarDate(value: string): boolean {
+  const match = ISO_CALENDAR_DATE_REGEX.exec(value);
+  if (match === null) {
+    return false;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+export function shiftIsoCalendarDate(ymd: string, deltaDays: number): string {
+  const match = ISO_CALENDAR_DATE_REGEX.exec(ymd);
+  if (match === null || !isValidIsoCalendarDate(ymd)) {
+    return ymd;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const shifted = new Date(Date.UTC(year, month - 1, day + deltaDays));
+  const yyyy = String(shifted.getUTCFullYear()).padStart(4, '0');
+  const mm = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function formatIsoCalendarDate(ymd: string): string {
+  const match = ISO_CALENDAR_DATE_REGEX.exec(ymd);
+  if (match === null) {
+    return ymd;
+  }
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
 
 export function getConsultorioTimeZone(configured?: string): string {
   const candidate = configured ?? import.meta.env.VITE_APP_TIME_ZONE;

@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Los changes C-01 a C-08, C-10 y C-12 están implementados, verificados y archivados (incluidos sus seguimientos). C-09, C-13 y C-15 tienen sus dependencias completas.
+- Los changes C-01 a C-08, C-10, C-12, C-13 y C-15 están implementados, verificados y archivados (incluidos sus seguimientos). C-09 tiene sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -470,7 +470,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-15] `agenda-odontologo-web`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-agenda-odontologo-web](openspec/changes/archive/2026-11-25-agenda-odontologo-web/proposal.md); 6/6 tareas y [verificación](openspec/changes/archive/2026-11-25-agenda-odontologo-web/verification.md). Verificado en Windows con 10/10 archivos (74/74 tests Vitest/RTL), `tsc -b` estricto (`TS-01`), `vite build`, `openspec validate --all --strict --no-interactive` y `git diff --check`. La inspección en Chrome real y el recorrido autenticado completo con credencial POSIX sobre backend/PostgreSQL quedan documentados para entorno Linux/WSL2 o `C-16`.
 - **Scope**:
   - Crear consulta diaria/semanal y detalle de turno de US-006 sobre C-10, con motivo, intervalo, estado y cinco datos básicos; reutilizar la integración de acceso frontend de C-12 y la zona acordada, sin edición de pacientes ni botones de operaciones manuales pendientes.
   - Diferenciar agenda vacía, carga, error y acceso no válido; actualizar la información tras consultar nuevamente cambios persistidos, sin añadir WebSocket ni tiempo real obligatorio.
