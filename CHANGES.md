@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Los changes C-01 a C-08 están implementados, verificados y archivados (incluido el seguimiento `correcciones-c06-configuracion-disponibilidad-api`). C-09, C-10 y C-13 tienen sus dependencias completas.
+- Los changes C-01 a C-08, C-10 y C-12 están implementados, verificados y archivados (incluidos sus seguimientos). C-09, C-13 y C-15 tienen sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -385,7 +385,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-10] `consulta-agenda-api`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` completado y archivado el 2026-11-24. [Propuesta](openspec/changes/archive/2026-11-24-consulta-agenda-api/proposal.md), [6/6 tareas](openspec/changes/archive/2026-11-24-consulta-agenda-api/tasks.md), [verificación](openspec/changes/archive/2026-11-24-consulta-agenda-api/verification.md) y [seguimiento de validación estricta](openspec/changes/archive/2026-11-24-correcciones-c10-validacion-parametros/verification.md). Verificado en Windows con 9/9 `DentistAgendaServiceTest`, 21/21 `DentistAgendaControllerTest`, `compileIntegrationTestJava`, `bootJar`, `openspec validate --strict` y `git diff --check`; la ejecución de `DentistAgendaIntegrationTest` contra PostgreSQL 17.12 de Docker Compose queda pendiente para entorno Linux/WSL2 con Docker o `C-16`. Desbloquea C-15.
 - **Scope**:
   - Precisar `GET /api/odontologo/agenda` y `GET /api/odontologo/turnos/{id}` para US-006: filtros día/semana en zona acordada, datos mínimos de turno y los cinco datos básicos del paciente.
   - Consultar exclusivamente la agenda única usando el acceso previamente implementado en C-03; sin directorio público, historia clínica, edición de pacientes ni alta manual.
