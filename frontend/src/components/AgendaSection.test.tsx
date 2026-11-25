@@ -1015,4 +1015,216 @@ describe('AgendaSection', () => {
     expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
     expect(screen.queryByText(/cargando agenda/i)).toBeNull();
   });
+
+  it('descarta detalle pendiente del periodo anterior al cambiar de Dia a Semana aunque el turno siga listado reprogramado y permite consultar el detalle vigente', async () => {
+    const user = userEvent.setup();
+    const detalleViejoDeferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+
+    const agendaDia10am: AgendaResponse = {
+      ...sampleAgendaDia,
+      turnos: [
+        {
+          ...sampleAgendaDia.turnos[0]!,
+          inicio: '2026-12-10T13:00:00Z',
+          fin: '2026-12-10T13:30:00Z',
+        },
+      ],
+    };
+    const agendaSemana12pm: AgendaResponse = {
+      ...sampleAgendaSemana,
+      turnos: [
+        {
+          ...sampleAgendaDia.turnos[0]!,
+          inicio: '2026-12-10T15:00:00Z',
+          fin: '2026-12-10T15:30:00Z',
+        },
+      ],
+    };
+    const detalleViejo10am: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      inicio: '2026-12-10T13:00:00Z',
+      fin: '2026-12-10T13:30:00Z',
+      revision: 1,
+    };
+    const detalleVigente12pm: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      inicio: '2026-12-10T15:00:00Z',
+      fin: '2026-12-10T15:30:00Z',
+      revision: 2,
+    };
+
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: agendaDia10am })
+      .mockResolvedValueOnce({ ok: true, data: agendaSemana12pm });
+    const getTurnoDetalle = vi
+      .fn()
+      .mockReturnValueOnce(detalleViejoDeferred.promise)
+      .mockResolvedValueOnce({ ok: true, data: detalleVigente12pm });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/10:00 a 10:30/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(screen.getByText(/cargando detalle/i)).toBeTruthy();
+
+    // Mientras #1 sigue pendiente, cambia a Semana donde el turno figura reprogramado a las 12:00
+    await user.click(screen.getByRole('button', { name: /semana/i }));
+    await screen.findByText(/12:00 a 12:30/);
+    expect(screen.queryByText(/cargando detalle/i)).toBeNull();
+
+    // Llega la respuesta anterior (10:00, revision 1): NO debe mostrarse ni reabrir el panel
+    detalleViejoDeferred.resolve({ ok: true, data: detalleViejo10am });
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.queryByText(/Revisión:\s*1/i)).toBeNull();
+    expect(screen.queryByText(/cargando detalle/i)).toBeNull();
+
+    // Permite volver a consultar el detalle vigente del turno en Semana
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    const detailPanel = await screen.findByRole('region', { name: /detalle del turno/i });
+    expect(await within(detailPanel).findByText(/12:00 a 12:30/)).toBeTruthy();
+    expect(within(detailPanel).getByText(/Revisión:\s*2/i)).toBeTruthy();
+    expect(getTurnoDetalle).toHaveBeenCalledTimes(2);
+  });
+
+  it('una respuesta 401 SESSION_REQUIRED de detalle descartada tras cambiar vista no altera sesion ni deja indicador de carga', async () => {
+    const user = userEvent.setup();
+    const onSessionExpired = vi.fn();
+    const detalle401Deferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaDia })
+      .mockResolvedValueOnce({ ok: true, data: sampleAgendaSemana });
+    const getTurnoDetalle = vi.fn().mockReturnValueOnce(detalle401Deferred.promise);
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={onSessionExpired}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(screen.getByText(/cargando detalle/i)).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: /semana/i }));
+    await screen.findByText(/07\/12\/2026 al 13\/12\/2026/);
+
+    detalle401Deferred.resolve({
+      ok: false,
+      status: 401,
+      codigo: 'SESSION_REQUIRED',
+      message: 'Tu sesión expiró o no está activa. Volvé a ingresar.',
+    });
+
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(1);
+    });
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(screen.queryByText(/cargando detalle/i)).toBeNull();
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.getByText(/Lucía Gómez/)).toBeTruthy();
+  });
+
+  it('al cambiar de fecha descarta detalle pendiente y si un detalle ya abierto cambio de horario lo actualiza al nuevo periodo', async () => {
+    const user = userEvent.setup();
+    const detallePendienteDeferred = createDeferred<ApiResult<TurnoDetalleResponse>>();
+
+    const agendaDia1 = sampleAgendaDia;
+    const agendaDia2: AgendaResponse = {
+      ...sampleAgendaDia,
+      desde: '2026-12-11',
+      hasta: '2026-12-11',
+      turnos: [
+        {
+          ...sampleAgendaDia.turnos[0]!,
+          inicio: '2026-12-11T15:00:00Z',
+          fin: '2026-12-11T15:30:00Z',
+        },
+      ],
+    };
+    const agendaSemanaReprogramada: AgendaResponse = {
+      ...sampleAgendaSemana,
+      turnos: [
+        {
+          ...sampleAgendaDia.turnos[0]!,
+          inicio: '2026-12-11T17:00:00Z',
+          fin: '2026-12-11T17:30:00Z',
+        },
+      ],
+    };
+    const detalleDia2: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      inicio: '2026-12-11T15:00:00Z',
+      fin: '2026-12-11T15:30:00Z',
+      revision: 1,
+    };
+    const detalleSemanaReprogramada: TurnoDetalleResponse = {
+      ...sampleDetalleConfirmado,
+      inicio: '2026-12-11T17:00:00Z',
+      fin: '2026-12-11T17:30:00Z',
+      revision: 2,
+    };
+
+    const getAgenda = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: agendaDia1 })
+      .mockResolvedValueOnce({ ok: true, data: agendaDia2 })
+      .mockResolvedValueOnce({ ok: true, data: agendaSemanaReprogramada });
+    const getTurnoDetalle = vi
+      .fn()
+      .mockReturnValueOnce(detallePendienteDeferred.promise)
+      .mockResolvedValueOnce({ ok: true, data: detalleDia2 })
+      .mockResolvedValueOnce({ ok: true, data: detalleSemanaReprogramada });
+
+    render(
+      <AgendaSection
+        apiClient={makeClient({ getAgenda, getTurnoDetalle })}
+        onSessionExpired={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/Lucía Gómez/);
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    expect(screen.getByText(/cargando detalle/i)).toBeTruthy();
+
+    // Cambiar fecha mientras el detalle anterior esta pendiente
+    const dateInput = screen.getByLabelText(/fecha/i);
+    fireEvent.change(dateInput, { target: { value: '2026-12-11' } });
+    await screen.findByText(/^11\/12\/2026$/);
+
+    // Respuesta vieja descartada
+    detallePendienteDeferred.resolve({ ok: true, data: sampleDetalleConfirmado });
+    await waitFor(() => {
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByRole('region', { name: /detalle del turno/i })).toBeNull();
+    expect(screen.queryByText(/cargando detalle/i)).toBeNull();
+
+    // Abrir detalle vigente en 2026-12-11 (12:00, revision 1)
+    await user.click(screen.getByRole('button', { name: /Lucía Gómez/i }));
+    const detailPanel = await screen.findByRole('region', { name: /detalle del turno/i });
+    expect(await within(detailPanel).findByText(/12:00 a 12:30/)).toBeTruthy();
+    expect(within(detailPanel).getByText(/Revisión:\s*1/i)).toBeTruthy();
+
+    // Cambiar a Semana donde el mismo turno fue reprogramado a las 14:00 (17:00Z): refresca detalle vigente
+    await user.click(screen.getByRole('button', { name: /semana/i }));
+    await waitFor(() => {
+      expect(getAgenda).toHaveBeenCalledTimes(3);
+      expect(getTurnoDetalle).toHaveBeenCalledTimes(3);
+    });
+    const updatedDetailPanel = await screen.findByRole('region', { name: /detalle del turno/i });
+    expect(await within(updatedDetailPanel).findByText(/14:00 a 14:30/)).toBeTruthy();
+    expect(within(updatedDetailPanel).getByText(/Revisión:\s*2/i)).toBeTruthy();
+  });
 });

@@ -31,6 +31,20 @@ function buildAgendaQuery(vista: AgendaVista, fecha: string | null): AgendaQuery
   return fecha !== null ? { vista, fecha } : { vista };
 }
 
+function isDetalleSyncedWithTurno(
+  detalle: TurnoDetalleResponse,
+  turno: AgendaResponse['turnos'][number],
+): boolean {
+  return (
+    detalle.id === turno.id &&
+    detalle.inicio === turno.inicio &&
+    detalle.fin === turno.fin &&
+    detalle.estado === turno.estado &&
+    detalle.duracionReservadaMinutos === turno.duracionReservadaMinutos &&
+    detalle.motivoId === turno.motivoId
+  );
+}
+
 export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProps) {
   const [vista, setVista] = useState<AgendaVista>('DIA');
   const [selectedFecha, setSelectedFecha] = useState<string | null>(null);
@@ -47,6 +61,8 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
   const latestAgendaRequestIdRef = useRef<number>(0);
   const latestDetalleRequestIdRef = useRef<number>(0);
   const selectedTurnoIdRef = useRef<string | null>(null);
+  const loadingDetalleRef = useRef<boolean>(false);
+  const turnoDetalleRef = useRef<TurnoDetalleResponse | null>(null);
   const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
@@ -59,16 +75,63 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
   const clearDetalleState = useCallback(() => {
     latestDetalleRequestIdRef.current += 1;
     selectedTurnoIdRef.current = null;
+    loadingDetalleRef.current = false;
+    turnoDetalleRef.current = null;
     setSelectedTurnoId(null);
     setTurnoDetalle(null);
     setLoadingDetalle(false);
     setDetalleError(null);
   }, []);
 
+  const fetchDetalle = useCallback(
+    async (turnoId: string): Promise<void> => {
+      latestDetalleRequestIdRef.current += 1;
+      const requestId = latestDetalleRequestIdRef.current;
+
+      selectedTurnoIdRef.current = turnoId;
+      loadingDetalleRef.current = true;
+      turnoDetalleRef.current = null;
+      setSelectedTurnoId(turnoId);
+      setLoadingDetalle(true);
+      setDetalleError(null);
+      setTurnoDetalle(null);
+
+      const result = await apiClient.getTurnoDetalle(turnoId);
+
+      if (!isMountedRef.current || requestId !== latestDetalleRequestIdRef.current) {
+        return;
+      }
+
+      loadingDetalleRef.current = false;
+      setLoadingDetalle(false);
+
+      if (!result.ok) {
+        if (result.codigo === 'SESSION_REQUIRED') {
+          onSessionExpired(result.message);
+          return;
+        }
+        setDetalleError(result.message);
+        return;
+      }
+
+      turnoDetalleRef.current = result.data;
+      setTurnoDetalle(result.data);
+    },
+    [apiClient, onSessionExpired],
+  );
+
   const fetchAgenda = useCallback(
     async (targetVista: AgendaVista, targetFecha: string | null): Promise<void> => {
       latestAgendaRequestIdRef.current += 1;
       const requestId = latestAgendaRequestIdRef.current;
+
+      latestDetalleRequestIdRef.current += 1;
+      if (loadingDetalleRef.current || (selectedTurnoIdRef.current !== null && turnoDetalleRef.current === null)) {
+        clearDetalleState();
+      } else {
+        loadingDetalleRef.current = false;
+        setLoadingDetalle(false);
+      }
 
       setLoadingAgenda(true);
       setAgendaError(null);
@@ -96,49 +159,24 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
       setDateInput(targetFecha ?? result.data.desde);
 
       const currentSelectedId = selectedTurnoIdRef.current;
-      if (
-        currentSelectedId !== null &&
-        !result.data.turnos.some((turno) => turno.id === currentSelectedId)
-      ) {
-        clearDetalleState();
+      if (currentSelectedId !== null) {
+        const matchedTurno = result.data.turnos.find((turno) => turno.id === currentSelectedId);
+        if (matchedTurno === undefined) {
+          clearDetalleState();
+        } else if (
+          turnoDetalleRef.current === null ||
+          !isDetalleSyncedWithTurno(turnoDetalleRef.current, matchedTurno)
+        ) {
+          void fetchDetalle(currentSelectedId);
+        }
       }
     },
-    [apiClient, clearDetalleState, onSessionExpired],
+    [apiClient, clearDetalleState, fetchDetalle, onSessionExpired],
   );
 
   useEffect(() => {
     void fetchAgenda('DIA', null);
   }, [fetchAgenda]);
-
-  async function fetchDetalle(turnoId: string): Promise<void> {
-    latestDetalleRequestIdRef.current += 1;
-    const requestId = latestDetalleRequestIdRef.current;
-
-    selectedTurnoIdRef.current = turnoId;
-    setSelectedTurnoId(turnoId);
-    setLoadingDetalle(true);
-    setDetalleError(null);
-    setTurnoDetalle(null);
-
-    const result = await apiClient.getTurnoDetalle(turnoId);
-
-    if (!isMountedRef.current || requestId !== latestDetalleRequestIdRef.current) {
-      return;
-    }
-
-    setLoadingDetalle(false);
-
-    if (!result.ok) {
-      if (result.codigo === 'SESSION_REQUIRED') {
-        onSessionExpired(result.message);
-        return;
-      }
-      setDetalleError(result.message);
-      return;
-    }
-
-    setTurnoDetalle(result.data);
-  }
 
   async function handleRefresh(): Promise<void> {
     if (selectedTurnoId === null) {
@@ -152,6 +190,7 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
     latestDetalleRequestIdRef.current += 1;
     const detalleRequestId = latestDetalleRequestIdRef.current;
 
+    loadingDetalleRef.current = true;
     setLoadingAgenda(true);
     setAgendaError(null);
     setLoadingDetalle(true);
@@ -198,6 +237,7 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
       return;
     }
 
+    loadingDetalleRef.current = false;
     setLoadingDetalle(false);
 
     const stillInAgenda =
@@ -209,11 +249,13 @@ export function AgendaSection({ apiClient, onSessionExpired }: AgendaSectionProp
     }
 
     if (!detalleResult.ok) {
+      turnoDetalleRef.current = null;
       setTurnoDetalle(null);
       setDetalleError(detalleResult.message);
       return;
     }
 
+    turnoDetalleRef.current = detalleResult.data;
     setTurnoDetalle(detalleResult.data);
   }
 
