@@ -27,6 +27,9 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
     getBloqueos: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     createBloqueo: vi.fn(),
     deleteBloqueo: vi.fn(),
+    getPublicMotivos: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+    getPublicDisponibilidad: vi.fn(),
+    createPublicTurno: vi.fn(),
     clearCsrfToken: vi.fn(),
     ...overrides,
   };
@@ -250,5 +253,43 @@ describe('App - flujo de sesion', () => {
     });
     await user.click(tabMotivos);
     expect(await screen.findByRole('heading', { name: /motivos de consulta/i })).toBeTruthy();
+  });
+
+  it('en /reservar muestra la reserva publica sin consultar checkSession y permite navegar entre vistas', async () => {
+    const user = userEvent.setup();
+    const checkSession = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      codigo: 'SESSION_REQUIRED',
+      message: 'Tu sesión expiró o no está activa. Volvé a ingresar.',
+    });
+    const getPublicMotivos = vi.fn().mockResolvedValue({
+      ok: true,
+      data: [{ id: '11111111-1111-1111-1111-111111111111', nombre: 'Consulta', duracionMinutos: 30 }],
+    });
+    const getPublicDisponibilidad = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        motivoId: '11111111-1111-1111-1111-111111111111',
+        duracionMinutos: 30,
+        zonaHoraria: 'America/Argentina/Mendoza',
+        horarios: [],
+      },
+    });
+
+    render(
+      <App
+        initialPath="/reservar"
+        client={makeClient({ checkSession, getPublicMotivos, getPublicDisponibilidad })}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { name: /reservar turno/i })).toBeTruthy();
+    expect(checkSession).not.toHaveBeenCalled();
+
+    // Navega hacia el acceso interno del odontologo
+    await user.click(screen.getByRole('button', { name: /acceso odontólogo/i }));
+    expect(await screen.findByRole('button', { name: /ingresar/i })).toBeTruthy();
+    expect(checkSession).toHaveBeenCalledTimes(1);
   });
 });

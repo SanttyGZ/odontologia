@@ -94,3 +94,31 @@ export function formatInstantInZone(isoInstant: string, timeZone: string): strin
     hour12: false,
   }).format(parsed);
 }
+
+export function formatSlotRangeInZone(
+  inicioIso: string,
+  finIso: string,
+  timeZone: string,
+): string {
+  const start = new Date(inicioIso);
+  const end = new Date(finIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${inicioIso} – ${finIso}`;
+  }
+  const hasSeconds = start.getUTCSeconds() !== 0 || end.getUTCSeconds() !== 0;
+  const dateFmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const timeFmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(hasSeconds ? { second: '2-digit' } : {}),
+    hour12: false,
+  });
+  return `${dateFmt.format(start)} · ${timeFmt.format(start)} a ${timeFmt.format(end)}`;
+}

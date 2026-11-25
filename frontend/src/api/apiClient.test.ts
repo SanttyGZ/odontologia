@@ -158,4 +158,96 @@ describe('apiClient', () => {
       expect(net.codigo).toBe('NETWORK_ERROR');
     }
   });
+
+  it('consulta disponibilidad y crea reserva publica sin solicitar CSRF interno y mapea 409 SLOT_UNAVAILABLE', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          { id: '11111111-1111-1111-1111-111111111111', nombre: 'Consulta', duracionMinutos: 30 },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          motivoId: '11111111-1111-1111-1111-111111111111',
+          duracionMinutos: 30,
+          zonaHoraria: 'America/Argentina/Mendoza',
+          horarios: [{ inicio: '2030-01-08T12:00:30Z', fin: '2030-01-08T12:30:30Z' }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          turnoId: '22222222-2222-2222-2222-222222222222',
+          motivoId: '11111111-1111-1111-1111-111111111111',
+          inicio: '2030-01-08T12:00:30Z',
+          fin: '2030-01-08T12:30:30Z',
+          duracionReservadaMinutos: 30,
+          estado: 'CONFIRMADO',
+          notificacionEstado: 'PENDIENTE',
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(409, { codigo: 'SLOT_UNAVAILABLE' }));
+
+    const client = createApiClient(fetchMock);
+
+    const motivos = await client.getPublicMotivos();
+    expect(motivos.ok).toBe(true);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/public/motivos');
+
+    const disp = await client.getPublicDisponibilidad({
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      desde: '2030-01-08',
+      hasta: '2030-01-10',
+    });
+    expect(disp.ok).toBe(true);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      '/api/public/disponibilidad?motivoId=11111111-1111-1111-1111-111111111111&desde=2030-01-08&hasta=2030-01-10',
+    );
+
+    const bookingInput = {
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      inicio: '2030-01-08T12:00:30Z',
+      nombre: 'Ana',
+      apellido: 'Perez',
+      email: 'ana@example.com',
+      telefono: '2615551234',
+      dni: '30123456',
+    };
+    const booked = await client.createPublicTurno(bookingInput);
+    expect(booked.ok).toBe(true);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/public/turnos');
+
+    const conflict = await client.createPublicTurno(bookingInput);
+    expect(conflict.ok).toBe(false);
+    if (!conflict.ok) {
+      expect(conflict.status).toBe(409);
+      expect(conflict.codigo).toBe('SLOT_UNAVAILABLE');
+    }
+
+    // Ninguna llamada debe haber ido a /api/odontologo/csrf
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('captura fallo al leer el cuerpo de una respuesta 201 en createPublicTurno y devuelve NETWORK_ERROR sin lanzar', async () => {
+    const broken201 = new Response('', { status: 201 });
+    vi.spyOn(broken201, 'text').mockRejectedValueOnce(new TypeError('Body stream aborted'));
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(broken201);
+
+    const client = createApiClient(fetchMock);
+    const result = await client.createPublicTurno({
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      inicio: '2030-01-08T12:00:30Z',
+      nombre: 'Ana',
+      apellido: 'Perez',
+      email: 'ana@example.com',
+      telefono: '2615551234',
+      dni: '30123456',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(0);
+      expect(result.codigo).toBe('NETWORK_ERROR');
+    }
+  });
 });
