@@ -1,6 +1,6 @@
 # Verificación
 
-**Cambio:** `correcciones-c09-autogestion-turnos-api`  
+**Cambio:** `correcciones-c09-autogestion-turnos-api`
 **Fecha:** 2026-11-25
 
 ## Resultados
@@ -18,6 +18,32 @@
 ## Decisiones pendientes
 
 - **C-14 / CRITICAL:** aprobar o rechazar antes de implementar el contrato candidato `GET /api/gestion/turno/disponibilidad?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, autenticado con `X-Management-Token` vigente. La API derivaría internamente el `motivoId` del turno autorizado, delegaría el cálculo en C-07 y respondería `200`, `Cache-Control: no-store` y `{ "zonaHoraria": "...", "horarios": [{"inicio":"...", "fin":"..."}] }`; no aceptaría ni expondría `motivoId` o datos adicionales del turno. No se implementó ruta ni se amplió `GET /api/gestion/turno`.
-- **PB-06 / C-14:** pendiente acordar con el odontólogo el contacto operativo fuera del plazo. C-09 conserva `409 MANAGEMENT_WINDOW_CLOSED`; no se agregó canal, alta manual ni excepción.
-- **C-10 / roadmap:** al iniciar, `CHANGES.md` mostraba C-10 como `[ ]` pendiente y C-12 como `[x]` completado/archivado. Se conservaron ambas filas sin cambios; la afirmación de cierres conjuntos de C-10 y C-12 no coincide con el estado local de C-10.
-- La suite completa debe repetirse en un entorno Linux con Java 21 para verificar los casos POSIX de C-04; esta limitación no afecta los 7/7 casos de integración específicos de C-09.
+- **PB-06 / C-14:** Fernando confirmó, según lo informó Santiago el 2026-11-25, que puede quedar para C-14. El canal operativo concreto debe acordarse antes de esa entrega. C-09 conserva `409 MANAGEMENT_WINDOW_CLOSED`; no se agregó canal, alta manual ni excepción.
+- **C-09 / CRITICAL:** la aprobación explícita de D-07 en el [diseño archivado de C-09](../2026-11-25-autogestion-turnos-api/design.md#d-07) cubre solo el UUID opaco en el resultado interno de `CredencialesGestion.validar`. No se encontró aprobación explícita para incluir el email confirmado de recuperación; esa ampliación queda pendiente de revisión humana. La aprobación previa de C-04 sobre recuperación no cubre el nuevo dato expuesto a C-09.
+- **C-09 / disputa por horario:** AG-05 exige `409 SLOT_UNAVAILABLE` y conservar turno, revisión, credencial e intenciones si otra escritura obtiene primero el intervalo. Se agregó `losingDestinationRaceKeepsOriginalTurnCredentialAndNoticeIntentions`; la ejecución Windows con PostgreSQL real 17.12 pasó y comprobó el estado persistido del turno perdedor. La clase usa dobles para la validación de credenciales de C-04, limitación que permanece para el comportamiento real de `CredencialesGestion.validar`.
+- **C-10 / roadmap:** Santiago indicó conservar el estado de esta rama. `CHANGES.md` muestra C-10 como `[ ]` pendiente y no se encontró un change archivado de C-10. C-12 permanece `[x]` completado/archivado con sus referencias de cierre.
+- La suite completa debe repetirse en un entorno Linux con Java 21 para verificar los casos POSIX de C-04; la ejecución focalizada descrita abajo no incluye esas pruebas.
+
+## Resultados de seguimiento — Windows, 2026-11-25
+
+Estado al inicio: Eclipse Temurin Java `21.0.13.1+2`, Gradle Wrapper `9.9.2` y PostgreSQL local de prueba **sin configurar para el harness**. No existe `.env` en la raíz y faltaban `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` y `ODONTOLOGIA_INTEGRATION_DATABASES`; por eso el primer intento no pudo verificar la instancia en `127.0.0.1:5433`. No se creó ni modificó configuración local.
+
+- `.\backend\gradlew.bat -p backend test --tests "*GestionTurno*"`: **correcto**, 18/18 pruebas (8 controller, 1 ETag y 9 service; 0 fallas). El primer intento falló al descargar la distribución de Gradle con `Permission denied: getsockopt`; el reintento del wrapper fijado pasó. Recibo exitoso `224efb62a3c888edac45091c834cbf0f`; salida redactada SHA-256 `4042623d57ee892a0a1a1b3ef14f9a232276b54ea7abae2331cf01147b4cf7da`. El intento inicial se conserva en el recibo `56060394562831e9afed67b16b37f1d1`, salida SHA-256 `126360e3c7d01ebde459f4ad16a9f25a738a32418405f42eb143dd79afd28d26`.
+- `.\backend\gradlew.bat -p backend bootJar`: **correcto**. Recibo `1a0633994e0cd6c4e348ce21eaf4d2f7`; salida redactada SHA-256 `3f6c289d0ab248adf976fe61fabf181864099896c8b90dc3e4b39ab702815ae3`.
+- Un reintento adicional con `--rerun-tasks` no llegó a completar `compileJava`: Windows devolvió `AccessDeniedException` al leer `spring-tx-7.1.0.jar` de la caché de Gradle. Los comandos solicitados sin ese flag terminaron correctamente; el task `integrationTest` sí recompiló el test añadido y pasó.
+- `.\backend\gradlew.bat -p backend integrationTest --tests "*GestionTurnoIntegrationTest"`: **primer intento bloqueado por configuración**, 7/7 escenarios fallaron al crear `TestDatabase` con `IllegalStateException`; el harness exige la conexión JDBC y `ODONTOLOGIA_INTEGRATION_DATABASES=true`. No fueron fallas POSIX ni demuestran un defecto funcional. Recibo `837c128c3d164029f239969ad61e4751`; salida redactada SHA-256 `b894d18259a56ab7eaec6839c3156f9291ad92cd3dac88c0e252d78dd636f2eb`. La repetición final con PostgreSQL temporal pasó, como se registra abajo.
+- `openspec validate appointment-self-management --type spec --strict --json`: **correcto**, 1/1 especificaciones. Recibo `a89637b5ef9c13c12931437652749660`; salida redactada SHA-256 `7af7429576c9f879c736140c2bddb6d0f5ad5c98b440f3bf65e438cbd2070983`.
+- `openspec validate seguimiento-c09-auditoria-verificacion --type change --strict --json`: **correcto**, 1/1 change. Recibo `e126039f8f195007c627cc9b7f87557a`; salida redactada SHA-256 `b4db67e71dc3dd4bbd53cfc3e1a6a91b19177e8f454e9ccfd335fa37eacae0e0`.
+- `git diff --check`: **correcto**, sin errores de whitespace. Recibo `da7e6c44d9ba2db7a6a648ae0df0ec2f`; salida redactada SHA-256 `f338539e520b0ac8d33210f230e7f79b7953c418b6fbb9eb903e81b5bf7d159f`.
+- Los archivos redactados de estos recibos están en `%TEMP%\odontologia-local-cache\active-stack\runs\seguimiento-c09-auditoria-verificacion\<recibo>\output.redacted.txt`. Integridad: los SHA-256 indicados coinciden. La verificación focalizada no ejecuta las pruebas de `DentistCredentialFileTest`; siguen pendientes las fallas Windows POSIX ya registradas para la suite amplia (`posix:permissions` y `Files.getPosixFilePermissions`).
+
+### Alcance efectivo de las pruebas C-09
+
+Las pruebas de destinatario recuperado, intervalo idéntico y disputa de destino están implementadas en `GestionTurnoIntegrationTest` y pasaron en la repetición Windows con PostgreSQL real 17.12. La prueba de disputa sincroniza dos turnos que solicitan el mismo intervalo y comprueba que el perdedor conserve intervalo, revisión, credencial e intenciones. La clase reemplaza `CredencialesGestion` de C-04 por un doble; consulta e inserta los registros de recuperación con SQL propio y **no verifica la implementación real de `CredencialesGestion.validar`** ni aprueba la ampliación CRITICAL del email.
+
+## Repetición de integración C-09 — Windows, 2026-11-25
+
+- Se inició el PostgreSQL fijado por el proyecto (`17.12`, digest de `compose.yaml`) como contenedor temporal sin volumen, en `127.0.0.1:55433`; se eliminó al terminar. El servicio Compose con volumen persistente no se reutilizó: su contraseña local no coincide con una credencial disponible. No se borró ni se modificó ese volumen; el contenedor Compose iniciado para comprobarlo se detuvo.
+- La primera ejecución contra el contenedor temporal fue rechazada por PostgreSQL porque la JVM envió la zona `America/Buenos_Aires`, inválida en esa versión. Se repitió el comando pedido con `JAVA_TOOL_OPTIONS=-Duser.timezone=America/Argentina/Buenos_Aires`, conservando Windows y Java 21; no se cambió código ni configuración del proyecto.
+- `.\backend\gradlew.bat -p backend integrationTest --tests "*GestionTurnoIntegrationTest"`: **correcto**, 8/8 escenarios, con variables JDBC limitadas al proceso y `ODONTOLOGIA_TEST_DATABASE_PORT=55433`. XML de JUnit `backend/build/test-results/integrationTest/TEST-dev.odontologia.GestionTurnoIntegrationTest.xml`, SHA-256 `E0CB7F85EC2C1C456DC12856F803D66A03346876393AA978A3F180762331022E`.
+- Esta ejecución comprueba en PostgreSQL real el destinatario actualizado tras recuperación para cancelación y reprogramación, la conservación del email del paciente y el historial enviado, el rechazo del mismo intervalo sin mutar revisión/credencial/avisos, y la disputa entre dos turnos con conservación persistida del perdedor. También prueba dos solicitudes con el mismo ETag. Los escenarios que validan credenciales usan un doble de C-04.

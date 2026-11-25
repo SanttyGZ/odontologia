@@ -39,8 +39,11 @@ class GestionTurnoIntegrationTest {
     private static final UUID CREDENCIAL_ID = UUID.fromString("30000000-0000-0000-0000-000000000002");
     private static final UUID CREDENCIAL_RECUPERADA_ID = UUID.fromString("30000000-0000-0000-0000-000000000003");
     private static final UUID INTENTO_EXISTENTE_ID = UUID.fromString("30000000-0000-0000-0000-000000000004");
+    private static final UUID TURNO_COMPETIDOR_ID = UUID.fromString("30000000-0000-0000-0000-000000000005");
+    private static final UUID CREDENCIAL_COMPETIDOR_ID = UUID.fromString("30000000-0000-0000-0000-000000000006");
     private static final Instant AHORA = Instant.parse("2030-01-07T12:00:00Z");
     private static final Instant INICIO_ACTUAL = Instant.parse("2030-01-09T12:00:00Z");
+    private static final Instant INICIO_COMPETIDOR = Instant.parse("2030-01-09T14:00:00Z");
     private static final Instant NUEVO_INICIO = Instant.parse("2030-01-10T12:00:00Z");
     private static final byte[] TOKEN_BYTES = new byte[32];
     private static final String TOKEN = Base64.getUrlEncoder().withoutPadding().encodeToString(TOKEN_BYTES);
@@ -49,6 +52,10 @@ class GestionTurnoIntegrationTest {
     private static final String TOKEN_RECUPERADO = Base64.getUrlEncoder().withoutPadding()
             .encodeToString(TOKEN_RECUPERADO_BYTES);
     private static final byte[] VERIFICADOR_RECUPERADO = sha256(TOKEN_RECUPERADO_BYTES);
+    private static final byte[] TOKEN_COMPETIDOR_BYTES = competitorTokenBytes();
+    private static final String TOKEN_COMPETIDOR = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(TOKEN_COMPETIDOR_BYTES);
+    private static final byte[] VERIFICADOR_COMPETIDOR = sha256(TOKEN_COMPETIDOR_BYTES);
     private static final String EMAIL_RECUPERADO = "odontologo.nuevo@example.invalid";
 
     @Test
@@ -228,12 +235,97 @@ class GestionTurnoIntegrationTest {
         }
     }
 
+    @Test
+    void losingDestinationRaceKeepsOriginalTurnCredentialAndNoticeIntentions() throws Exception {
+        try (var db = new TestDatabase(); var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+            var harness = setup(db, true);
+            Instant competitorEnd = INICIO_COMPETIDOR.plusSeconds(30 * 60);
+            CoreSchemaTest.insertTurn(db.jdbc, harness.fixture(), TURNO_COMPETIDOR_ID,
+                    INICIO_COMPETIDOR.atOffset(ZoneOffset.UTC), competitorEnd.atOffset(ZoneOffset.UTC), "CONFIRMADO");
+            db.jdbc.update("""
+                    INSERT INTO credencial_gestion (id, turno_id, verificador, material_cifrado, nonce,
+                        version_clave, emitida_en) VALUES (?, ?, ?, ?, ?, 'test', ?)
+                    """, CREDENCIAL_COMPETIDOR_ID, TURNO_COMPETIDOR_ID, VERIFICADOR_COMPETIDOR,
+                    new byte[48], new byte[12], AHORA.atOffset(ZoneOffset.UTC));
+
+            var coordinator = new AgendaWriteCoordinator(db.jdbc, new JdbcTransactionManager(db.dataSource()));
+            var avisos = new PreparacionAvisos(db.jdbc);
+            coordinator.write(harness.fixture().agenda(), () -> {
+                avisos.reserva(new PreparacionAvisos.Evento(UUID.randomUUID(), TURNO_COMPETIDOR_ID, 0,
+                        "f@example.invalid", AHORA), INICIO_COMPETIDOR, CREDENCIAL_COMPETIDOR_ID);
+                return null;
+            });
+            when(harness.credenciales().validar(TOKEN_COMPETIDOR)).thenAnswer(invocation -> db.jdbc.query("""
+                    SELECT t.id, t.inicio, t.fin, t.revision, c.id AS referencia_credencial,
+                        (SELECT r.destinatario FROM recuperacion_enlace r
+                            WHERE r.turno_id = t.id ORDER BY r.orden DESC LIMIT 1) AS destinatario_recuperacion
+                    FROM credencial_gestion c JOIN turno t ON t.id = c.turno_id
+                    WHERE c.verificador = ? AND c.revocada_en IS NULL AND t.estado = 'CONFIRMADO'
+                    """, (rs, row) -> new TurnoAutorizado(rs.getObject("id", UUID.class),
+                    rs.getObject("inicio", OffsetDateTime.class).toInstant(),
+                    rs.getObject("fin", OffsetDateTime.class).toInstant(), rs.getInt("revision"),
+                    rs.getObject("referencia_credencial", UUID.class),
+                    Optional.ofNullable(rs.getString("destinatario_recuperacion"))),
+                    VERIFICADOR_COMPETIDOR).stream().findFirst());
+
+            String originalEtag = harness.service().consultar(TOKEN).etag();
+            String competitorEtag = harness.service().consultar(TOKEN_COMPETIDOR).etag();
+            var ready = new CountDownLatch(2);
+            var start = new CountDownLatch(1);
+            var original = threads.submit(() -> reprogramAtBarrier(harness.service(), TOKEN, originalEtag, ready, start));
+            var competitor = threads.submit(() -> reprogramAtBarrier(harness.service(), TOKEN_COMPETIDOR,
+                    competitorEtag, ready, start));
+            assertThat(ready.await(4, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            String originalResult = original.get(8, TimeUnit.SECONDS);
+            String competitorResult = competitor.get(8, TimeUnit.SECONDS);
+
+            assertThat(List.of(originalResult, competitorResult))
+                    .containsExactlyInAnyOrder("CONFIRMED", "SLOT_UNAVAILABLE");
+            UUID losingTurn = originalResult.equals("SLOT_UNAVAILABLE") ? TURNO_ID : TURNO_COMPETIDOR_ID;
+            UUID winningTurn = losingTurn.equals(TURNO_ID) ? TURNO_COMPETIDOR_ID : TURNO_ID;
+            UUID losingCredential = losingTurn.equals(TURNO_ID) ? CREDENCIAL_ID : CREDENCIAL_COMPETIDOR_ID;
+            Instant losingStart = losingTurn.equals(TURNO_ID) ? INICIO_ACTUAL : INICIO_COMPETIDOR;
+            assertThat(db.jdbc.queryForObject("SELECT inicio FROM turno WHERE id = ?", OffsetDateTime.class, winningTurn)
+                    .toInstant()).isEqualTo(NUEVO_INICIO);
+            assertThat(db.jdbc.queryForObject("SELECT revision FROM turno WHERE id = ?", Integer.class, winningTurn))
+                    .isEqualTo(1);
+            assertThat(db.jdbc.queryForObject("SELECT inicio FROM turno WHERE id = ?", OffsetDateTime.class, losingTurn)
+                    .toInstant()).isEqualTo(losingStart);
+            assertThat(db.jdbc.queryForObject("SELECT fin FROM turno WHERE id = ?", OffsetDateTime.class, losingTurn)
+                    .toInstant()).isEqualTo(losingStart.plusSeconds(30 * 60));
+            assertThat(db.jdbc.queryForObject("SELECT revision FROM turno WHERE id = ?", Integer.class, losingTurn))
+                    .isZero();
+            assertThat(db.jdbc.queryForObject("SELECT estado FROM turno WHERE id = ?", String.class, losingTurn))
+                    .isEqualTo("CONFIRMADO");
+            assertThat(db.jdbc.queryForObject("SELECT revocada_en IS NULL FROM credencial_gestion WHERE id = ?",
+                    Boolean.class, losingCredential)).isTrue();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intencion_notificacion WHERE turno_id = ?",
+                    Long.class, losingTurn)).isEqualTo(2);
+            assertThat(db.jdbc.queryForObject("SELECT bool_and(elegible) FROM intencion_notificacion WHERE turno_id = ?",
+                    Boolean.class, losingTurn)).isTrue();
+            assertThat(db.jdbc.queryForObject("""
+                    SELECT bool_and(destinatario = 'f@example.invalid' AND credencial_id = ?)
+                    FROM intencion_notificacion WHERE turno_id = ? AND revision = 0
+                    """, Boolean.class, losingCredential, losingTurn)).isTrue();
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM origen_notificacion WHERE turno_id = ?",
+                    Long.class, losingTurn)).isEqualTo(1);
+            assertThat(db.jdbc.queryForObject("SELECT count(*) FROM intencion_notificacion WHERE turno_id = ? AND revision > 0",
+                    Long.class, losingTurn)).isZero();
+        }
+    }
+
     private static String reprogramAtBarrier(GestionTurnoService service, String etag,
+                                             CountDownLatch ready, CountDownLatch start) throws Exception {
+        return reprogramAtBarrier(service, TOKEN, etag, ready, start);
+    }
+
+    private static String reprogramAtBarrier(GestionTurnoService service, String token, String etag,
                                              CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         assertThat(start.await(4, TimeUnit.SECONDS)).isTrue();
         try {
-            service.reprogramar(TOKEN, etag,
+            service.reprogramar(token, etag,
                     new dev.odontologia.disponibilidad.GestionTurnoDtos.ReprogramacionInput(NUEVO_INICIO));
             return "CONFIRMED";
         } catch (RuntimeException failure) {
@@ -356,6 +448,12 @@ class GestionTurnoIntegrationTest {
     }
 
     private static byte[] recoveredTokenBytes() {
+        byte[] bytes = new byte[32];
+        bytes[0] = 1;
+        return bytes;
+    }
+
+    private static byte[] competitorTokenBytes() {
         byte[] bytes = new byte[32];
         bytes[0] = 1;
         return bytes;
