@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../api/apiClient';
+import { createApiClient } from '../api/apiClient';
 import type {
   ApiResult,
   DisponibilidadPublicaResponse,
@@ -242,5 +243,108 @@ describe('PublicBookingPage', () => {
     const alertText = (await screen.findByRole('alert')).textContent ?? '';
     expect(alertText).toMatch(/incierto|no se pudo confirmar si la reserva/i);
     expect(screen.queryByText(/^reserva confirmada$/i)).toBeNull();
+  });
+
+  it('invalida el horario elegido al cambiar fechas, descarta respuestas tardias incluso con periodo invalido y conserva los 5 datos', async () => {
+    const user = userEvent.setup();
+    const pendingPeriod = createDeferred<ApiResult<DisponibilidadPublicaResponse>>();
+    const thirdPeriod: DisponibilidadPublicaResponse = {
+      motivoId: sampleMotivos[0]!.id,
+      duracionMinutos: 30,
+      zonaHoraria: 'America/Argentina/Mendoza',
+      horarios: [{ inicio: '2030-01-12T14:00:00Z', fin: '2030-01-12T14:30:00Z' }],
+    };
+
+    const getPublicDisponibilidad = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: sampleDisponibilidad })
+      .mockReturnValueOnce(pendingPeriod.promise)
+      .mockResolvedValue({ ok: true, data: thirdPeriod });
+    const createPublicTurno = vi.fn();
+
+    render(
+      <PublicBookingPage
+        apiClient={makeClient({ getPublicDisponibilidad, createPublicTurno })}
+      />,
+    );
+
+    // Selecciona horario del primer periodo y completa los 5 datos del paciente
+    await user.click(await screen.findByRole('button', { name: /09:00:30/i }));
+    await user.type(screen.getByLabelText(/^nombre/i), 'Carla');
+    await user.type(screen.getByLabelText(/^apellido/i), 'Mendez');
+    await user.type(screen.getByLabelText(/^email/i), 'carla@example.com');
+    await user.type(screen.getByLabelText(/teléfono/i), '2616667788');
+    await user.type(screen.getByLabelText(/^dni/i), '31222333');
+
+    // Cambia "Desde" dejando la nueva consulta pendiente -> el horario previo queda invalidado y no se puede confirmar
+    await user.type(screen.getByLabelText(/desde/i), '2030-01-10');
+    expect(screen.queryByRole('button', { name: /confirmar reserva/i })).toBeNull();
+    expect(createPublicTurno).not.toHaveBeenCalled();
+
+    // Cambia "Hasta" a una fecha anterior (periodo invalido): la respuesta tardia pendiente debe descartarse
+    await user.type(screen.getByLabelText(/hasta/i), '2030-01-09');
+    expect((await screen.findByRole('alert')).textContent).toMatch(/posterior/i);
+
+    pendingPeriod.resolve({ ok: true, data: sampleDisponibilidad });
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /09:00:30/i })).toBeNull();
+    });
+    expect(screen.getByRole('alert').textContent).toMatch(/posterior/i);
+    expect(createPublicTurno).not.toHaveBeenCalled();
+
+    // Corrige "Hasta" a un periodo valido, elige el nuevo horario y verifica que los 5 datos se conservaron
+    const hastaInput = screen.getByLabelText(/hasta/i);
+    await user.clear(hastaInput);
+    await user.type(hastaInput, '2030-01-12');
+    await user.click(await screen.findByRole('button', { name: /11:00 a 11:30/i }));
+
+    expect((screen.getByLabelText(/^nombre/i) as HTMLInputElement).value).toBe('Carla');
+    expect((screen.getByLabelText(/^apellido/i) as HTMLInputElement).value).toBe('Mendez');
+    expect((screen.getByLabelText(/^email/i) as HTMLInputElement).value).toBe('carla@example.com');
+    expect((screen.getByLabelText(/teléfono/i) as HTMLInputElement).value).toBe('2616667788');
+    expect((screen.getByLabelText(/^dni/i) as HTMLInputElement).value).toBe('31222333');
+  });
+
+  it('ante 201 cuyo cuerpo falla al leerse sale del estado de envio, muestra resultado incierto y conserva los datos', async () => {
+    const user = userEvent.setup();
+    const broken201 = new Response('', { status: 201 });
+    vi.spyOn(broken201, 'text').mockRejectedValueOnce(new TypeError('stream interrupted'));
+
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(sampleMotivos), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(sampleDisponibilidad), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(broken201);
+
+    render(<PublicBookingPage apiClient={createApiClient(fetchMock)} />);
+
+    await user.click(await screen.findByRole('button', { name: /09:00:30/i }));
+    await user.type(screen.getByLabelText(/^nombre/i), 'Sofia');
+    await user.type(screen.getByLabelText(/^apellido/i), 'Vega');
+    await user.type(screen.getByLabelText(/^email/i), 'sofia@example.com');
+    await user.type(screen.getByLabelText(/teléfono/i), '2613334455');
+    await user.type(screen.getByLabelText(/^dni/i), '34555666');
+
+    await user.click(screen.getByRole('button', { name: /confirmar reserva/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/resultado incierto/i);
+    expect(alert.textContent).toMatch(/correo|disponibilidad/i);
+
+    const submitBtn = screen.getByRole('button', { name: /confirmar reserva/i }) as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(false);
+    expect(screen.queryByText(/confirmando reserva/i)).toBeNull();
+    expect((screen.getByLabelText(/^nombre/i) as HTMLInputElement).value).toBe('Sofia');
+    expect((screen.getByLabelText(/^dni/i) as HTMLInputElement).value).toBe('34555666');
   });
 });

@@ -227,4 +227,27 @@ describe('apiClient', () => {
     // Ninguna llamada debe haber ido a /api/odontologo/csrf
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
+
+  it('captura fallo al leer el cuerpo de una respuesta 201 en createPublicTurno y devuelve NETWORK_ERROR sin lanzar', async () => {
+    const broken201 = new Response('', { status: 201 });
+    vi.spyOn(broken201, 'text').mockRejectedValueOnce(new TypeError('Body stream aborted'));
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(broken201);
+
+    const client = createApiClient(fetchMock);
+    const result = await client.createPublicTurno({
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      inicio: '2030-01-08T12:00:30Z',
+      nombre: 'Ana',
+      apellido: 'Perez',
+      email: 'ana@example.com',
+      telefono: '2615551234',
+      dni: '30123456',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(0);
+      expect(result.codigo).toBe('NETWORK_ERROR');
+    }
+  });
 });

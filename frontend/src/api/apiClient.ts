@@ -57,15 +57,22 @@ function fail(status: number, codigo: ApiErrorCode): ApiResult<never> {
   };
 }
 
-async function parseJsonSafe(response: Response): Promise<unknown> {
-  const text = await response.text();
+async function readJsonBody(
+  response: Response,
+): Promise<{ ok: true; body: unknown } | { ok: false; codigo: 'NETWORK_ERROR' }> {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    return { ok: false, codigo: 'NETWORK_ERROR' };
+  }
   if (text.trim().length === 0) {
-    return null;
+    return { ok: true, body: null };
   }
   try {
-    return JSON.parse(text) as unknown;
+    return { ok: true, body: JSON.parse(text) as unknown };
   } catch {
-    return null;
+    return { ok: true, body: null };
   }
 }
 
@@ -90,7 +97,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return fail(0, 'NETWORK_ERROR');
     }
 
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     if (!response.ok) {
       const codigo = isErrorResponse(body) ? toApiErrorCode(body.codigo) : 'TECHNICAL_FAILURE';
       return fail(response.status, codigo);
@@ -103,7 +114,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
   }
 
   async function parseErrorResponse(response: Response): Promise<ApiResult<never>> {
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     let codigo: ApiErrorCode;
     if (isErrorResponse(body)) {
       codigo = toApiErrorCode(body.codigo);
@@ -136,7 +151,11 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return parseErrorResponse(response);
     }
 
-    const body = await parseJsonSafe(response);
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    const body = parsed.body;
     if (!guard(body)) {
       return fail(response.status, 'INVALID_RESPONSE');
     }
@@ -192,11 +211,14 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       return { ok: true, data: undefined as T };
     }
 
-    const body = await parseJsonSafe(response);
-    if (!guard(body)) {
+    const parsed = await readJsonBody(response);
+    if (!parsed.ok) {
+      return fail(0, parsed.codigo);
+    }
+    if (!guard(parsed.body)) {
       return fail(response.status, 'INVALID_RESPONSE');
     }
-    return { ok: true, data: body };
+    return { ok: true, data: parsed.body };
   }
 
   return {
@@ -286,11 +308,14 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
         return parseErrorResponse(response);
       }
 
-      const body = await parseJsonSafe(response);
-      if (!isReservaPublicaResponse(body)) {
+      const parsed = await readJsonBody(response);
+      if (!parsed.ok) {
+        return fail(0, parsed.codigo);
+      }
+      if (!isReservaPublicaResponse(parsed.body)) {
         return fail(response.status, 'INVALID_RESPONSE');
       }
-      return { ok: true, data: body };
+      return { ok: true, data: parsed.body };
     },
   };
 }

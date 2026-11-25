@@ -74,14 +74,17 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
       if (motivoId.length === 0) {
         return;
       }
+      const reqId = ++slotsReqRef.current;
+      setSelectedSlot(null);
       if (fromDate.length > 0 && toDate.length > 0 && fromDate > toDate) {
+        setSlotsLoading(false);
         setSlotsError('La fecha inicial no puede ser posterior a la fecha final.');
         setHorarios([]);
         return;
       }
-      const reqId = ++slotsReqRef.current;
       setSlotsLoading(true);
       setSlotsError(null);
+      setHorarios([]);
 
       const result = await apiClient.getPublicDisponibilidad({
         motivoId,
@@ -95,6 +98,7 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
       if (!result.ok) {
         setSlotsError(result.message);
         setHorarios([]);
+        setSelectedSlot(null);
         return;
       }
       setZonaHoraria(result.data.zonaHoraria);
@@ -121,6 +125,11 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
   }, [selectedMotivoId, desde, hasta, confirmedBooking, loadDisponibilidad]);
 
   const selectedMotivo = motivos.find((m) => m.id === selectedMotivoId) ?? null;
+  const hasValidSelectedSlot =
+    !slotsLoading &&
+    slotsError === null &&
+    selectedSlot !== null &&
+    horarios.some((h) => h.inicio === selectedSlot.inicio);
 
   function validatePatientFields(): string | null {
     const cleanNombre = nombre.trim();
@@ -152,7 +161,7 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (submitting || selectedSlot === null || selectedMotivoId.length === 0) {
+    if (submitting || !hasValidSelectedSlot || selectedSlot === null || selectedMotivoId.length === 0) {
       return;
     }
 
@@ -166,16 +175,25 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
     }
 
     setSubmitting(true);
-    const result = await apiClient.createPublicTurno({
-      motivoId: selectedMotivoId,
-      inicio: selectedSlot.inicio,
-      nombre: nombre.trim(),
-      apellido: apellido.trim(),
-      email: email.trim(),
-      telefono: telefono.trim(),
-      dni: dni.trim(),
-    });
-    setSubmitting(false);
+    let result;
+    try {
+      result = await apiClient.createPublicTurno({
+        motivoId: selectedMotivoId,
+        inicio: selectedSlot.inicio,
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        email: email.trim(),
+        telefono: telefono.trim(),
+        dni: dni.trim(),
+      });
+    } catch {
+      setUncertainOutcome(
+        'Resultado incierto: no se pudo confirmar si la reserva llegó a registrarse por un fallo al leer la respuesta. Revisá tu casilla de correo o actualizá la disponibilidad antes de volver a enviar.',
+      );
+      return;
+    } finally {
+      setSubmitting(false);
+    }
 
     if (result.ok) {
       setConfirmedBooking(result.data);
@@ -331,6 +349,7 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
                     disabled={submitting}
                     onChange={(e) => {
                       setDesde(e.target.value);
+                      setSelectedSlot(null);
                       setBookingError(null);
                       setUncertainOutcome(null);
                     }}
@@ -346,6 +365,7 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
                     disabled={submitting}
                     onChange={(e) => {
                       setHasta(e.target.value);
+                      setSelectedSlot(null);
                       setBookingError(null);
                       setUncertainOutcome(null);
                     }}
@@ -432,7 +452,7 @@ export function PublicBookingPage({ apiClient, onGoToDentist }: PublicBookingPag
             </p>
           ) : null}
 
-          {selectedSlot !== null ? (
+          {hasValidSelectedSlot && selectedSlot !== null ? (
             <section className="card stack" aria-labelledby="step-patient-heading">
               <h2 id="step-patient-heading">3. Completá tus datos para confirmar</h2>
               <p className="muted">
