@@ -1,0 +1,5 @@
+schema: spec-driven
+skip_specs: true
+created: 2026-11-25
+goal: Documentar el alcance de la aprobación CRITICAL, la decisión PB-06 y el
+  estado verificable de C-09 en Windows

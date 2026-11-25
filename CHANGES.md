@@ -21,7 +21,7 @@
 - **Decisión posterior del usuario, 2026-11-19:** saltear diseño visual e ir al roadmap. Política `off`, persistida en [design-system/README.md](design-system/README.md) y en el estado de fundación. AT-11 queda resuelto respecto de esa política; no bloquea las pantallas. Se omiten sistema visual y revisión obligatoria de mockups. AP-01, nombre comercial, permanece pendiente; usar el identificador provisional `odontologia` sin crear una marca.
 - No se incluyen clínica, pagos, suscripciones, WhatsApp, recepción, múltiples consultorios, despliegue público, auditoría completa ni procedimientos de backup/restore. PB-12 y AT-09 deben resolverse antes de usar datos reales; la prueba de reinicio de esta entrega no equivale a restaurar un respaldo.
 - La semana es un objetivo sin fechas ni capacidad acordadas (AP-03). Este orden no promete terminar en siete días ni demuestra viabilidad del plazo. AP-04 y SU-01/SU-04/SU-05 siguen pendientes de validación con personas; una demostración técnica no acredita demanda ni reducción de trabajo. AP-02, AP-05 y AP-06 se mantienen fuera de este plan de MVP.
-- Los changes C-01 a C-08, C-10, C-12, C-13 y C-15 están implementados, verificados y archivados (incluidos sus seguimientos). C-09 tiene sus dependencias completas.
+- Los changes C-01 a C-10, C-12, C-13 y C-15 están implementados, verificados y archivados (incluidos sus seguimientos). C-09 tiene registrada la aprobación CRITICAL de Fernando para el uso interno del email confirmado de recuperación al preparar avisos futuros. La disputa de AG-05 por el mismo horario tiene prueba de integración PostgreSQL. C-11 y C-14 tienen sus dependencias completas.
 
 ### Gobernanza aplicable
 
@@ -67,14 +67,13 @@ Cada US tiene cuatro CA-US en el documento 06; la columna de cierre incluye la v
 
 ### Decisiones que habilitan la implementación
 
-AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 para la demostración local se concretaron en C-01 y C-02. AT-11 ya estaba resuelto. C-06 resolvió PB-02 (franjas del mismo día, sin duplicados ni solapes; pausas dentro de una franja), PB-03 (inicios cada 15 minutos anclados al comienzo de cada franja y duraciones múltiplos de 15 entre 15 y 240 minutos) y PB-05 (rechazar cambios que afecten turnos confirmados; usar la duración actualmente configurada al reprogramar). PB-01 permanece pendiente para C-07/C-08/C-09. Las tablas siguientes identifican los alcances y pendientes restantes. Consultar las actualizaciones en `knowledge-base/10_preguntas_abiertas.md`.
+AT-01, AT-02 para el esquema inicial, AT-05 para el protocolo común y AT-08 para la demostración local se concretaron en C-01 y C-02. AT-11 ya estaba resuelto. C-06 resolvió PB-02 (franjas del mismo día, sin duplicados ni solapes; pausas dentro de una franja), PB-03 (inicios cada 15 minutos anclados al comienzo de cada franja y duraciones múltiplos de 15 entre 15 y 240 minutos) y PB-05 (rechazar cambios que afecten turnos confirmados; usar la duración actualmente configurada al reprogramar). PB-01 quedó resuelta en C-07/C-08/C-09. Las tablas siguientes identifican los alcances y pendientes restantes. Consultar las actualizaciones en `knowledge-base/10_preguntas_abiertas.md`.
 
 | Pendiente | Resolver antes de | Límite que debe quedar explícito |
 |---|---|---|
-| PB-01 | C-07/C-08/C-09 para ventana temporal, zona, calendario y límites de reserva; PB-01 ya no bloquea C-06 | Resolver extremos 24 h/30 días, zona, calendario, medianoche y franjas antes de calcular o aceptar reservas; no inferir de la máquina. |
 | PB-04 | C-02 para esquema de pacientes y C-08 | Crear/reutilizar, validar y corregir; no añadir unicidad natural, fusión ni sobrescritura automática por DNI/email. |
-| PB-06 | C-09 y C-14 para el contacto fuera de plazo | Definir contacto operativo; no incluir alta manual ni excepciones del odontólogo sin ampliar el alcance expresamente. |
-| PB-07 | C-04, C-09 y C-14 | Vigencia, invalidación, datos visibles y recuperación; sin cuenta ni verificación previa obligatoria del email. |
+| PB-06 | C-14; Fernando confirmó el 2026-11-25 que puede quedar para esa entrega (según informó Santiago) | C-09 conserva `409 MANAGEMENT_WINDOW_CLOSED`; acordar el canal operativo concreto antes de C-14. No incluir alta manual ni excepciones sin ampliar el alcance expresamente. |
+| PB-07 | C-14 consume el contrato resuelto en C-04/C-09 | Vigencia, invalidación, datos visibles y recuperación; sin cuenta ni verificación previa obligatoria del email. El email recuperado solo se usa internamente para avisos futuros; no se expone en respuestas HTTP. |
 | PB-08 | C-05, C-08 y C-09 | Repeticiones, resultados inciertos y cambios simultáneos; no inferir reactivación de cancelados. |
 | PB-09 | C-05 y C-11 | Confirmación y recordatorio al reservar exactamente a 24 horas. |
 | PB-10, PB-11 | C-04/C-05 para el contrato durable, C-08/C-09 para respuestas y C-11 para envío | Tolerancias, reintentos, eventos únicos, avisos obsoletos, envío en curso y SMTP incierto; persistencia no garantiza entrega exactamente una vez. |
@@ -368,12 +367,12 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-09] `autogestion-turnos-api`
 
-- **Estado**: `[ ]` pendiente.
+- **Estado**: `[x]` implementación, correcciones y verificación de C-09 completadas y archivadas el 2026-11-25. Fernando aprobó explícitamente —según informó Santiago el 2026-11-25 y quedó registrado junto con la pregunta exacta— que `CredencialesGestion.validar` entregue internamente a C-09 el email confirmado en la recuperación asistida únicamente para preparar avisos futuros. No se expone en HTTP ni se modifica el email del paciente o el historial de envíos. Ver [registro de gobernanza y verificación C-09](openspec/changes/archive/2026-11-25-correcciones-c09-autogestion-turnos-api/verification.md). Pasaron 20/20 pruebas unitarias focalizadas, 8/8 integraciones con PostgreSQL 17.12, `bootJar` y validación estricta de la especificación. La disputa de AG-05 por el mismo horario también está verificada. PB-06 queda para C-14 con `409 MANAGEMENT_WINDOW_CLOSED`; el envío SMTP permanece en C-11 y la interfaz, en C-14. La suite completa de C-04 con permisos POSIX queda pendiente para Linux/WSL2.
 - **Scope**:
-  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-06/PB-07/PB-08 y respuestas de PB-10/PB-11 aplicables; usar PB-05 ya definida en C-06.
+  - Precisar contratos orientativos `GET /api/gestion/turno`, `POST /api/gestion/turno/cancelacion` y `POST /api/gestion/turno/reprogramacion`; resolver PB-01/PB-07 y PB-08 aplicables; conservar `409 MANAGEMENT_WINDOW_CLOSED`. Fernando confirmó que PB-06 puede quedar para C-14; el canal operativo concreto se acuerda antes de esa entrega. Usar PB-05 ya definida en C-06.
   - Implementar consulta limitada de US-007 y operaciones de US-008/US-009 consumiendo validación de C-04. Abrir/previsualizar el enlace solo consulta; cancelación y reprogramación requieren escritura expresa, autorización y plazo vigentes.
   - Cancelar sin borrado físico; reprogramar conservando identificador y estado `CONFIRMADO`, con nuevo intervalo y revisión. Coordinar intención de aviso y recordatorio según C-05; el original debe conservarse ante cualquier rechazo o fallo del cambio.
-  - Verificar plazo, contacto fuera de plazo sin excepciones inventadas, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La protección de credenciales se reutiliza; cualquier cambio en su semántica vuelve a revisión CRITICAL. CT-01 y FL-05/FL-06/FL-07.
+  - Verificar plazo, rechazo `409 MANAGEMENT_WINDOW_CLOSED`, destino ocupado, fallo transaccional, cambios simultáneos/repetidos y disputa por el nuevo intervalo. La integración PostgreSQL real de C-09 comprobó que el turno perdedor conserva intervalo, revisión, credencial e intenciones. No se agrega contacto fuera de plazo ni excepción manual. Fernando aprobó el uso interno del email recuperado para avisos futuros; ver la pregunta y respuesta registradas en el informe de verificación. CT-01 y FL-05/FL-06/FL-07.
 - **Dependencias**: C-08.
 - **Governance**: MEDIO — estados y reglas con checkpoints; no autoriza cambiar generación/transporte/validación de enlaces de C-04.
 - **Leer antes**:
@@ -458,7 +457,8 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 - **Scope**:
   - Implementar apertura de enlace, consulta mínima del turno, solicitud expresa de cancelación y elección/confirmación de nuevo horario; consumir C-04/C-09 sin mutaciones al cargar o previsualizar.
   - Integrar transporte y manejo de material privado exclusivamente conforme al contrato revisado de C-04. Presentar diseño y obtener aprobación explícita de código para esta integración; no guardar enlaces en logs ni añadir persistencia de credenciales por conveniencia.
-  - Mostrar enlace inválido/vencido, fuera de plazo con contacto operativo acordado, destino ocupado y original conservado si falla; recuperación según PB-07, sin agregar cuenta o verificación previa.
+  - Consultar horarios únicamente para el motivo del turno autorizado mediante un contrato protegido aún pendiente de aprobación CRITICAL; no aceptar `motivoId` elegido por el cliente ni ampliar los datos de `GET /api/gestion/turno` antes de esa aprobación.
+  - Mostrar enlace inválido/vencido, fuera de plazo con contacto operativo acordado, destino ocupado y original conservado si falla; recuperación según PB-07, sin agregar cuenta o verificación previa. Fernando confirmó que PB-06 puede quedar para C-14; el contacto operativo específico sigue pendiente de acuerdo antes de implementar ese flujo.
   - Verificar US-007/US-008/US-009 sobre enlaces locales reales, incluida apertura desde emails y ausencia de cambios por previsualización; comprobar teclado y pantallas pequeña/grande sin solicitar mockups.
 - **Dependencias**: C-09.
 - **Governance**: CRITICO — manejo frontend de credenciales/enlaces y datos protegidos; aprobación de código separada del roadmap.
@@ -470,7 +470,7 @@ Un solo agente puede seguir el orden topológico del cuadro de dependencias; la 
 
 ### [C-15] `agenda-odontologo-web`
 
-- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-agenda-odontologo-web](openspec/changes/archive/2026-11-25-agenda-odontologo-web/proposal.md); 6/6 tareas y [verificación](openspec/changes/archive/2026-11-25-agenda-odontologo-web/verification.md). Verificado en Windows con 10/10 archivos (74/74 tests Vitest/RTL), `tsc -b` estricto (`TS-01`), `vite build`, `openspec validate --all --strict --no-interactive` y `git diff --check`. La inspección en Chrome real y el recorrido autenticado completo con credencial POSIX sobre backend/PostgreSQL quedan documentados para entorno Linux/WSL2 o `C-16`.
+- **Estado**: `[x]` completado y archivado el 2026-11-25 en [2026-11-25-agenda-odontologo-web](openspec/changes/archive/2026-11-25-agenda-odontologo-web/proposal.md); 6/6 tareas y [verificación](openspec/changes/archive/2026-11-25-agenda-odontologo-web/verification.md), más seguimiento `correcciones-c15-agenda-odontologo-web` en curso de cierre. Verificado en Windows con 10/10 archivos (81/81 tests Vitest/RTL), `tsc -b` estricto (`TS-01`), `vite build` y Chromium headless (`msedge.exe`) a `390×844` y `1440×900` (cambio de período, agenda vacía, apellido de 100 caracteres sin espacios con detalle abierto y cerrado, revisión `0` y `2`, y navegación por teclado sin desbordamiento horizontal ni errores de consola). El recorrido autenticado completo con credencial POSIX sobre backend/PostgreSQL queda pendiente para entorno Linux/WSL2 o `C-16`.
 - **Scope**:
   - Crear consulta diaria/semanal y detalle de turno de US-006 sobre C-10, con motivo, intervalo, estado y cinco datos básicos; reutilizar la integración de acceso frontend de C-12 y la zona acordada, sin edición de pacientes ni botones de operaciones manuales pendientes.
   - Diferenciar agenda vacía, carga, error y acceso no válido; actualizar la información tras consultar nuevamente cambios persistidos, sin añadir WebSocket ni tiempo real obligatorio.
