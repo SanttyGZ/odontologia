@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../api/apiClient';
@@ -44,6 +44,14 @@ function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 afterEach(() => {
   window.history.replaceState(null, '', '/');
   window.localStorage.clear();
@@ -51,6 +59,175 @@ afterEach(() => {
 });
 
 describe('GestionTurnoPage', () => {
+  const staleQueryCases: Array<[
+    string,
+    Awaited<ReturnType<ApiClient['getGestionDisponibilidad']>>,
+  ]> = [
+    ['respuesta exitosa obsoleta', {
+      ok: true,
+      data: {
+        zonaHoraria: 'America/Argentina/Mendoza',
+        horarios: [{ inicio: '2030-01-23T15:00:00Z', fin: '2030-01-23T15:30:00Z' }],
+      },
+    }],
+    ['un error obsoleto', {
+      ok: false,
+      status: 400,
+      codigo: 'VALIDATION_ERROR',
+      message: 'Error del período anterior.',
+    }],
+  ];
+
+  it('procesa un segundo enlace en la misma pestaña, limpia el flujo previo e ignora su respuesta tardía', async () => {
+    setManagementUrl();
+    const previousRefresh = createDeferred<Awaited<ReturnType<ApiClient['getGestionTurno']>>>();
+    const nextTurn = createDeferred<Awaited<ReturnType<ApiClient['getGestionTurno']>>>();
+    const getTurn = vi.fn()
+      .mockResolvedValueOnce({ ok: true, data: currentTurn })
+      .mockReturnValueOnce(previousRefresh.promise)
+      .mockReturnValueOnce(nextTurn.promise);
+    const client = makeClient({
+      getGestionTurno: getTurn,
+      getGestionDisponibilidad: vi.fn().mockResolvedValue({
+        ok: true,
+        data: {
+          zonaHoraria: 'America/Argentina/Mendoza',
+          horarios: [{ inicio: '2030-01-09T12:00:00Z', fin: '2030-01-09T12:30:00Z' }],
+        },
+      }),
+    });
+
+    render(<GestionTurnoPage apiClient={client} />);
+    await screen.findByText('08/01/2030');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Cancelar turno' }));
+    await user.click(screen.getByRole('button', { name: 'Ver horarios disponibles' }));
+    await user.click(screen.getByRole('button', { name: 'Consultar horarios' }));
+    await user.click(await screen.findByRole('radio', { name: /09:00 a 09:30/i }));
+    expect(screen.getByRole('group', { name: 'Confirmación de cancelación' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Confirmación de reprogramación' })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Actualizar estado del turno' }));
+    expect(getTurn).toHaveBeenCalledTimes(2);
+    const oldUrl = window.location.href;
+    window.history.pushState(null, '', '/gestionar-turno#second-private-token');
+    window.dispatchEvent(new HashChangeEvent('hashchange', {
+      oldURL: oldUrl,
+      newURL: window.location.href,
+    }));
+
+    expect(await screen.findByText('Consultando el turno…')).toBeTruthy();
+    expect(window.location.hash).toBe('');
+    expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
+    expect(screen.queryByText('08/01/2030')).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Confirmación de cancelación' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Confirmación de reprogramación' })).toBeNull();
+    expect(getTurn).toHaveBeenLastCalledWith('second-private-token');
+
+    await act(async () => {
+      nextTurn.resolve({
+        ok: true,
+        data: {
+          turno: { ...currentTurn.turno, fecha: '2030-02-04' },
+          etag: '"turno-r2"',
+        },
+      });
+    });
+    expect(await screen.findByText('04/02/2030')).toBeTruthy();
+
+    await act(async () => {
+      previousRefresh.resolve({
+        ok: true,
+        data: {
+          turno: { ...currentTurn.turno, fecha: '2030-01-10' },
+          etag: '"turno-r-old"',
+        },
+      });
+    });
+    expect(screen.getByText('04/02/2030')).toBeTruthy();
+    expect(screen.queryByText('10/01/2030')).toBeNull();
+  });
+
+  it('orienta al contacto directo al abrir un turno confirmado sin acciones', async () => {
+    setManagementUrl();
+    const noActionsTurn = {
+      turno: { ...currentTurn.turno, acciones: [] },
+      etag: currentTurn.etag,
+    };
+    const client = makeClient({
+      getGestionTurno: vi.fn().mockResolvedValue({ ok: true, data: noActionsTurn }),
+    });
+
+    render(<GestionTurnoPage apiClient={client} />);
+
+    expect(await screen.findByText(/contactá directamente al odontólogo por el canal habitual del consultorio/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cancelar turno' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ver horarios disponibles' })).toBeNull();
+  });
+
+  it.each(staleQueryCases)(
+    'ignora %s del 23 de enero después de consultar el 24 y mantiene la carga vigente',
+    async (_description, staleResponse) => {
+      setManagementUrl();
+      const previousQuery = createDeferred<Awaited<ReturnType<ApiClient['getGestionDisponibilidad']>>>();
+      const currentQuery = createDeferred<Awaited<ReturnType<ApiClient['getGestionDisponibilidad']>>>();
+      const availability = vi.fn()
+        .mockReturnValueOnce(previousQuery.promise)
+        .mockReturnValueOnce(currentQuery.promise);
+      const client = makeClient({ getGestionDisponibilidad: availability });
+      const user = userEvent.setup();
+
+      render(<GestionTurnoPage apiClient={client} />);
+      await screen.findByRole('heading', { name: 'Tu turno' });
+      await user.click(screen.getByRole('button', { name: 'Ver horarios disponibles' }));
+      fireEvent.change(screen.getByLabelText('Desde (opcional)'), { target: { value: '2030-01-23' } });
+      fireEvent.change(screen.getByLabelText('Hasta (opcional)'), { target: { value: '2030-01-23' } });
+      await user.click(screen.getByRole('button', { name: 'Consultar horarios' }));
+
+      fireEvent.change(screen.getByLabelText('Desde (opcional)'), { target: { value: '2030-01-24' } });
+      fireEvent.change(screen.getByLabelText('Hasta (opcional)'), { target: { value: '2030-01-24' } });
+      expect(screen.getByRole('button', { name: 'Consultar horarios' })).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: 'Consultar horarios' }));
+      expect(availability).toHaveBeenNthCalledWith(1, 'private-token', {
+        desde: '2030-01-23',
+        hasta: '2030-01-23',
+      });
+      expect(availability).toHaveBeenNthCalledWith(2, 'private-token', {
+        desde: '2030-01-24',
+        hasta: '2030-01-24',
+      });
+      expect(screen.getByRole('button', { name: 'Buscando…' })).toBeTruthy();
+
+      await act(async () => {
+        previousQuery.resolve(staleResponse);
+      });
+
+      expect(screen.getByRole('button', { name: 'Buscando…' })).toBeTruthy();
+      expect((screen.getByRole('button', { name: 'Buscando…' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByRole('radio')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Confirmar reprogramación' })).toBeNull();
+      expect(screen.queryByText('Error del período anterior.')).toBeNull();
+
+      await act(async () => {
+        currentQuery.resolve({
+          ok: true,
+          data: {
+            zonaHoraria: 'America/Argentina/Mendoza',
+            horarios: [{ inicio: '2030-01-24T12:00:00Z', fin: '2030-01-24T12:30:00Z' }],
+          },
+        });
+      });
+      const currentSlot = await screen.findByRole('radio', { name: /09:00 a 09:30/i });
+      expect(currentSlot).toBeTruthy();
+      expect(screen.queryByRole('radio', { name: /12:00 a 12:30/i })).toBeNull();
+      await user.click(currentSlot);
+      expect(screen.getByRole('button', { name: 'Confirmar reprogramación' })).toBeTruthy();
+    },
+  );
+
   it('quita el fragmento, consulta solo con la credencial en memoria y no ofrece datos de contacto', async () => {
     setManagementUrl();
     const client = makeClient();

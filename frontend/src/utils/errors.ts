@@ -1,5 +1,8 @@
 import type { ApiErrorCode } from '../types/odontologia';
 
+export const MANAGEMENT_WINDOW_CLOSED_MESSAGE =
+  'El plazo para gestionar este turno en línea está cerrado. Para solicitar un cambio, contactá directamente al odontólogo por el canal habitual del consultorio.';
+
 const ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   VALIDATION_ERROR: 'Los datos ingresados no son válidos. Revisá los campos e intentá nuevamente.',
   INVALID_LOGIN_REQUEST: 'El formato de la solicitud de ingreso no es válido.',
@@ -13,7 +16,7 @@ const ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   CONFIGURATION_CONFLICT: 'El cambio entra en conflicto con turnos confirmados vigentes.',
   SLOT_UNAVAILABLE: 'El horario elegido ya no está disponible. Seleccioná otra opción libre.',
   LINK_NOT_AVAILABLE: 'Este enlace de autogestión no está disponible. Volvé a abrir el enlace original.',
-  MANAGEMENT_WINDOW_CLOSED: 'El plazo para gestionar este turno en línea está cerrado. Para solicitar un cambio, contactá directamente al odontólogo por el canal habitual del consultorio.',
+  MANAGEMENT_WINDOW_CLOSED: MANAGEMENT_WINDOW_CLOSED_MESSAGE,
   SAME_INTERVAL: 'El horario elegido coincide con el turno actual. Seleccioná otro horario.',
   TURN_VERSION_MISMATCH: 'El turno cambió desde la última consulta. Actualizá el estado antes de reintentar.',
   PRECONDITION_REQUIRED: 'No se pudo validar la versión del turno. Actualizá el estado e intentá nuevamente.',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ApiClient } from '../api/apiClient';
 import type {
   ApiResult,
@@ -6,6 +6,7 @@ import type {
   GestionTurno,
   GestionTurnoActual,
 } from '../types/odontologia';
+import { MANAGEMENT_WINDOW_CLOSED_MESSAGE } from '../utils/errors';
 import { formatSlotRangeInZone } from '../utils/timezone';
 
 interface GestionTurnoPageProps {
@@ -14,9 +15,18 @@ interface GestionTurnoPageProps {
 
 type Feedback = { kind: 'success' | 'warning'; text: string } | null;
 
-function readInitialToken(): string | null {
-  const fragment = window.location.hash;
+function readTokenFromFragment(fragment: string): string | null {
   return fragment.length > 1 ? fragment.slice(1) : null;
+}
+
+function removeCredentialFragment(): void {
+  if (window.location.hash.length > 0) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${window.location.search}`,
+    );
+  }
 }
 
 function displayDate(value: string): string {
@@ -29,7 +39,9 @@ function isUncertainWrite(result: Exclude<ApiResult<unknown>, { ok: true }>): bo
 }
 
 export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
-  const [token] = useState(readInitialToken);
+  const [token, setToken] = useState(() => readTokenFromFragment(window.location.hash));
+  const linkGenerationRef = useRef(0);
+  const availabilityRequestRef = useRef(0);
   const [turno, setTurno] = useState<GestionTurno | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
   const [loading, setLoading] = useState(token !== null);
@@ -46,9 +58,38 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<string | null>(null);
 
   useLayoutEffect(() => {
-    if (window.location.hash.length > 0) {
-      window.history.replaceState(window.history.state, '', window.location.pathname);
-    }
+    removeCredentialFragment();
+
+    const handleHashChange = (event: HashChangeEvent) => {
+      const url = event.newURL.length > 0 ? new URL(event.newURL) : new URL(window.location.href);
+      const nextToken = readTokenFromFragment(url.hash);
+      removeCredentialFragment();
+
+      linkGenerationRef.current += 1;
+      availabilityRequestRef.current += 1;
+      setToken(nextToken);
+      setTurno(null);
+      setEtag(null);
+      setLoading(nextToken !== null);
+      setRefreshing(false);
+      setWriting(null);
+      setError(null);
+      setFeedback(null);
+      setConfirmarCancelacion(false);
+      setMostrarReprogramacion(false);
+      setDesde('');
+      setHasta('');
+      setDisponibilidad(null);
+      setCargandoDisponibilidad(false);
+      setHorarioSeleccionado(null);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      linkGenerationRef.current += 1;
+      availabilityRequestRef.current += 1;
+    };
   }, []);
 
   const actualizarTurno = useCallback(async (
@@ -57,18 +98,31 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     if (token === null) {
       return null;
     }
+    const linkGeneration = linkGenerationRef.current;
     setRefreshing(true);
     const result = await apiClient.getGestionTurno(token);
+    if (linkGeneration !== linkGenerationRef.current) {
+      return result;
+    }
     if (result.ok) {
+      availabilityRequestRef.current += 1;
+      setCargandoDisponibilidad(false);
       setTurno(result.data.turno);
       setEtag(result.data.etag);
       setError(null);
       setDisponibilidad(null);
       setHorarioSeleccionado(null);
+      setConfirmarCancelacion(false);
     } else {
       if (result.codigo === 'LINK_NOT_AVAILABLE') {
+        availabilityRequestRef.current += 1;
+        setCargandoDisponibilidad(false);
         setTurno(null);
         setEtag(null);
+        setDisponibilidad(null);
+        setHorarioSeleccionado(null);
+        setConfirmarCancelacion(false);
+        setMostrarReprogramacion(false);
       }
       if (reportarError) {
         setError(result.message);
@@ -82,21 +136,38 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
   useEffect(() => {
     if (token !== null) {
       void actualizarTurno();
+    } else {
+      setLoading(false);
     }
   }, [token, actualizarTurno]);
+
+  function invalidarConsultaDisponibilidad(): void {
+    availabilityRequestRef.current += 1;
+    setCargandoDisponibilidad(false);
+    setDisponibilidad(null);
+    setHorarioSeleccionado(null);
+    setError(null);
+    setFeedback(null);
+  }
 
   async function consultarDisponibilidad(): Promise<void> {
     if (token === null) {
       return;
     }
+    const requestId = ++availabilityRequestRef.current;
+    const linkGeneration = linkGenerationRef.current;
     setCargandoDisponibilidad(true);
     setError(null);
     setFeedback(null);
     setHorarioSeleccionado(null);
+    setDisponibilidad(null);
     const result = await apiClient.getGestionDisponibilidad(token, {
       ...(desde.length > 0 ? { desde } : {}),
       ...(hasta.length > 0 ? { hasta } : {}),
     });
+    if (requestId !== availabilityRequestRef.current || linkGeneration !== linkGenerationRef.current) {
+      return;
+    }
     setCargandoDisponibilidad(false);
     if (!result.ok) {
       setDisponibilidad(null);
@@ -110,10 +181,14 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     if (token === null || etag === null || turno === null) {
       return;
     }
+    const linkGeneration = linkGenerationRef.current;
     setWriting('cancelacion');
     setError(null);
     setFeedback(null);
     const result = await apiClient.cancelarGestionTurno(token, etag);
+    if (linkGeneration !== linkGenerationRef.current) {
+      return;
+    }
     if (result.ok) {
       setTurno({
         fecha: result.data.fecha,
@@ -133,6 +208,9 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     }
     if (isUncertainWrite(result)) {
       const refreshed = await actualizarTurno(false);
+      if (linkGeneration !== linkGenerationRef.current) {
+        return;
+      }
       setError(null);
       setFeedback({
         kind: 'warning',
@@ -150,10 +228,14 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     if (token === null || etag === null || horarioSeleccionado === null || turno === null) {
       return;
     }
+    const linkGeneration = linkGenerationRef.current;
     setWriting('reprogramacion');
     setError(null);
     setFeedback(null);
     const result = await apiClient.reprogramarGestionTurno(token, etag, horarioSeleccionado);
+    if (linkGeneration !== linkGenerationRef.current) {
+      return;
+    }
     if (result.ok) {
       setTurno((actual) => actual === null ? actual : {
         ...actual,
@@ -175,6 +257,9 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     }
     if (isUncertainWrite(result)) {
       const refreshed = await actualizarTurno(false);
+      if (linkGeneration !== linkGenerationRef.current) {
+        return;
+      }
       setError(null);
       setFeedback({
         kind: 'warning',
@@ -244,8 +329,8 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
           </section>
 
           {turno.estado === 'CONFIRMADO' && !puedeCancelar && !puedeReprogramar ? (
-            <p className="feedback feedback-warning">
-              Este turno ya no tiene acciones de autogestión disponibles.
+            <p className="feedback feedback-warning" role="status" aria-live="polite">
+              {MANAGEMENT_WINDOW_CLOSED_MESSAGE}
             </p>
           ) : null}
 
@@ -320,8 +405,7 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
                         value={desde}
                         onChange={(event) => {
                           setDesde(event.target.value);
-                          setDisponibilidad(null);
-                          setHorarioSeleccionado(null);
+                          invalidarConsultaDisponibilidad();
                         }}
                       />
                     </div>
@@ -333,8 +417,7 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
                         value={hasta}
                         onChange={(event) => {
                           setHasta(event.target.value);
-                          setDisponibilidad(null);
-                          setHorarioSeleccionado(null);
+                          invalidarConsultaDisponibilidad();
                         }}
                       />
                     </div>

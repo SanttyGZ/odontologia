@@ -37,3 +37,11 @@ La política visual del proyecto es `off`, así que no se generaron mockups. Se 
 - `openspec validate --archived --strict` pasó en los 19 changes archivados, incluido C-14. `git diff --check` pasó sin errores.
 - OpenSpec reportó sus cuatro artefactos de planificación y 13/13 tareas completas antes del archivo. Después del archivo no queda un change activo.
 - `openspec validate --all --strict` reportó un fallo ajeno a C-14 en `spec/dentist-agenda-query`: falta un propósito no-placeholder y una requirement supera 500 caracteres. Las dos especificaciones de C-14 son válidas; el spec ajeno no se modificó para conservar el alcance.
+
+## Regresiones del flujo web verificadas después del archivo — 2026-11-25
+
+- **Prueba roja antes del arreglo:** `npm test -- --maxWorkers=1 src/components/GestionTurnoPage.test.tsx` ejecutó 15 pruebas y fallaron 4: segundo enlace en la misma pestaña, turno confirmado con `acciones: []` y las dos variantes de respuesta tardía del período anterior (éxito y error).
+- Se agregaron pruebas con dos credenciales ficticias en la misma pestaña; un turno confirmado sin acciones; y consultas demoradas para el 23 y el 24 de enero. Comprueban limpieza de datos, horarios y confirmaciones anteriores, descarte de respuestas de turno obsoletas, indicador de carga vigente, ausencia de errores/horarios obsoletos y confirmación solo para los horarios actuales.
+- **Pruebas verdes:** `npm test` pasó con 10 archivos y 73/73 pruebas. **Build:** `npm run build` pasó con `tsc -b` y Vite, usando Node 24.20.0/npm 11.19.0.
+- Los cambios se limitaron a `GestionTurnoPage.tsx`, su prueba, el texto de error compartido del flujo web y esta evidencia. No se modificaron rutas, parámetros, cuerpos ni contratos de la API.
+- Sigue pendiente abrir el enlace desde un correo recibido cuando C-11 habilite ese flujo; esta comprobación permanece asignada a C-16.
