@@ -78,6 +78,73 @@ describe('GestionTurnoPage', () => {
     }],
   ];
 
+  it('vuelve a consultar y actualiza los datos al reabrir el mismo enlace', async () => {
+    setManagementUrl();
+    const updatedTurn = {
+      turno: { ...currentTurn.turno, fecha: '2030-01-10' },
+      etag: '"turno-r2"',
+    };
+    const getTurn = vi.fn()
+      .mockResolvedValueOnce({ ok: true, data: currentTurn })
+      .mockResolvedValueOnce({ ok: true, data: updatedTurn });
+    const client = makeClient({ getGestionTurno: getTurn });
+
+    render(<GestionTurnoPage apiClient={client} />);
+    expect(await screen.findByText('08/01/2030')).toBeTruthy();
+    expect(window.location.hash).toBe('');
+
+    const oldUrl = window.location.href;
+    window.history.pushState(null, '', '/gestionar-turno#private-token');
+    await act(async () => {
+      window.dispatchEvent(new HashChangeEvent('hashchange', {
+        oldURL: oldUrl,
+        newURL: window.location.href,
+      }));
+    });
+
+    expect(window.location.hash).toBe('');
+    expect(getTurn).toHaveBeenCalledTimes(2);
+    expect(getTurn).toHaveBeenNthCalledWith(1, 'private-token');
+    expect(getTurn).toHaveBeenNthCalledWith(2, 'private-token');
+    expect(await screen.findByText('10/01/2030')).toBeTruthy();
+    expect(screen.queryByText('08/01/2030')).toBeNull();
+  });
+
+  it('ignora la primera respuesta pendiente cuando reabre el mismo enlace', async () => {
+    setManagementUrl();
+    const previousOpening = createDeferred<Awaited<ReturnType<ApiClient['getGestionTurno']>>>();
+    const updatedTurn = {
+      turno: { ...currentTurn.turno, fecha: '2030-01-10' },
+      etag: '"turno-r2"',
+    };
+    const getTurn = vi.fn()
+      .mockReturnValueOnce(previousOpening.promise)
+      .mockResolvedValueOnce({ ok: true, data: updatedTurn });
+    const client = makeClient({ getGestionTurno: getTurn });
+
+    render(<GestionTurnoPage apiClient={client} />);
+    expect(await screen.findByText('Consultando el turno…')).toBeTruthy();
+
+    const oldUrl = window.location.href;
+    window.history.pushState(null, '', '/gestionar-turno#private-token');
+    await act(async () => {
+      window.dispatchEvent(new HashChangeEvent('hashchange', {
+        oldURL: oldUrl,
+        newURL: window.location.href,
+      }));
+    });
+
+    expect(getTurn).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('10/01/2030')).toBeTruthy();
+    await act(async () => {
+      previousOpening.resolve({ ok: true, data: currentTurn });
+    });
+
+    expect(screen.getByText('10/01/2030')).toBeTruthy();
+    expect(screen.queryByText('08/01/2030')).toBeNull();
+    expect(window.location.hash).toBe('');
+  });
+
   it('procesa un segundo enlace en la misma pestaña, limpia el flujo previo e ignora su respuesta tardía', async () => {
     setManagementUrl();
     const previousRefresh = createDeferred<Awaited<ReturnType<ApiClient['getGestionTurno']>>>();

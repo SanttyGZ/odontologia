@@ -251,7 +251,7 @@ describe('apiClient', () => {
     }
   });
 
-  it('consulta turno y disponibilidad protegida sin motivoId ni cache', async () => {
+  it('consulta varias veces el turno y la disponibilidad protegida sin motivoId ni cache', async () => {
     const token = 'private-management-token';
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -262,6 +262,13 @@ describe('apiClient', () => {
         estado: 'CONFIRMADO',
         acciones: ['CANCELAR', 'REPROGRAMAR'],
       }), { status: 200, headers: { ETag: '"turno-r1"' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        fecha: '2030-01-10',
+        horaInicio: '09:00:00',
+        horaFin: '09:30:00',
+        estado: 'CONFIRMADO',
+        acciones: ['CANCELAR', 'REPROGRAMAR'],
+      }), { status: 200, headers: { ETag: '"turno-r2"' } }))
       .mockResolvedValueOnce(jsonResponse(200, {
         zonaHoraria: 'America/Argentina/Mendoza',
         horarios: [{ inicio: '2030-01-09T12:00:00Z', fin: '2030-01-09T12:30:00Z' }],
@@ -269,6 +276,7 @@ describe('apiClient', () => {
 
     const client = createApiClient(fetchMock);
     const appointment = await client.getGestionTurno(token);
+    const repeatedAppointment = await client.getGestionTurno(token);
     const availability = await client.getGestionDisponibilidad(token, {
       desde: '2030-01-09',
       hasta: '2030-01-20',
@@ -279,8 +287,13 @@ describe('apiClient', () => {
       expect(appointment.data.etag).toBe('"turno-r1"');
       expect(appointment.data.turno.estado).toBe('CONFIRMADO');
     }
+    expect(repeatedAppointment).toMatchObject({
+      ok: true,
+      data: { turno: { fecha: '2030-01-10' }, etag: '"turno-r2"' },
+    });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/gestion/turno');
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/gestion/turno');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
       '/api/gestion/turno/disponibilidad?desde=2030-01-09&hasta=2030-01-20',
     );
     for (const [, init] of fetchMock.mock.calls) {

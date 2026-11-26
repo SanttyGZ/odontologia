@@ -40,6 +40,7 @@ function isUncertainWrite(result: Exclude<ApiResult<unknown>, { ok: true }>): bo
 
 export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
   const [token, setToken] = useState(() => readTokenFromFragment(window.location.hash));
+  const [apertura, setApertura] = useState(0);
   const linkGenerationRef = useRef(0);
   const availabilityRequestRef = useRef(0);
   const [turno, setTurno] = useState<GestionTurno | null>(null);
@@ -65,7 +66,8 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
       const nextToken = readTokenFromFragment(url.hash);
       removeCredentialFragment();
 
-      linkGenerationRef.current += 1;
+      const nextGeneration = ++linkGenerationRef.current;
+      setApertura(nextGeneration);
       availabilityRequestRef.current += 1;
       setToken(nextToken);
       setTurno(null);
@@ -139,7 +141,7 @@ export function GestionTurnoPage({ apiClient }: GestionTurnoPageProps) {
     } else {
       setLoading(false);
     }
-  }, [token, actualizarTurno]);
+  }, [token, apertura, actualizarTurno]);
 
   function invalidarConsultaDisponibilidad(): void {
     availabilityRequestRef.current += 1;

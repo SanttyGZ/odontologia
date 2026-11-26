@@ -45,3 +45,33 @@ La política visual del proyecto es `off`, así que no se generaron mockups. Se 
 - **Pruebas verdes:** `npm test` pasó con 10 archivos y 73/73 pruebas. **Build:** `npm run build` pasó con `tsc -b` y Vite, usando Node 24.20.0/npm 11.19.0.
 - Los cambios se limitaron a `GestionTurnoPage.tsx`, su prueba, el texto de error compartido del flujo web y esta evidencia. No se modificaron rutas, parámetros, cuerpos ni contratos de la API.
 - Sigue pendiente abrir el enlace desde un correo recibido cuando C-11 habilite ese flujo; esta comprobación permanece asignada a C-16.
+
+## Seguimiento correctivo: reapertura de la misma credencial — 2026-11-25
+
+### Resultado y alcance
+
+La causa era que la consulta inicial dependía del valor de `token`: volver a abrir la misma URL cambiaba el historial de fragmento y aumentaba la generación de enlace, pero React recibía el mismo token y no ejecutaba otra lectura. La pantalla quedaba en carga, y la respuesta anterior se descartaba correctamente, dejando el estado sin resultado.
+
+`GestionTurnoPage` ahora conserva un contador de aperturas aparte del token. Cada `hashchange` reconocido incrementa ese contador, vuelve a retirar el fragmento y hace que el efecto consulte el turno; las respuestas de generaciones anteriores continúan descartándose. El token sigue solo en memoria y el `apiClient` mantiene `X-Management-Token`, `cache: no-store` y los mismos endpoints. No se cambió ningún contrato de API.
+
+### Regresiones y rutas
+
+- Baseline focalizado previo a editar: `GestionTurnoPage.test.tsx`, `App.test.tsx` y `apiClient.test.ts`, 35/35 pruebas.
+- **Rojo antes del arreglo:** las dos regresiones del mismo enlace fallaron: ambas esperaban dos llamadas y recibían una.
+- **Verde después del arreglo:** 2/2 regresiones; luego 3 archivos focalizados, 38/38. Se cubrió el resultado nuevo del segundo GET y una primera consulta pendiente que responde al final.
+- Suite frontend completa: 10 archivos, 76/76 pruebas aprobadas con `npm test -- --maxWorkers=1`. Una repetición sin limitar workers tuvo 3 fallas transitorias en `PublicBookingPage.test.tsx` (dos timeouts y una validación de campos antes de continuar); otra corrida paralela completa también pasó 76/76. `npm run build` terminó con `tsc -b` y Vite aprobados. Se usó Node 24.20.0/npm 11.19.0, distinto de Node 24.22.3/npm 12.2.3 indicados por el proyecto.
+- `App.tsx` ya despachaba `/`, `/reservar` y `/gestionar-turno`; se conservó sin cambios. `App.test.tsx` agregó una prueba de reapertura por la ruta pública. `apiClient.test.ts` ahora comprueba dos lecturas consecutivas con el mismo token y sus encabezados privados. La reserva pública y el acceso interno siguen cubiertos.
+- **C-15:** `CHANGES.md` conserva `[ ]` y su texto/referencias sin cambios. En `ramaSanty` no hay una pantalla de agenda diaria/semanal C-15; no se inventó ni se agregó al alcance de esta corrección. La aplicación conserva el acceso interno existente.
+
+### Verificación del entorno
+
+- Validación estricta del change correctivo: aprobada. Validación estricta archivada: 19/19. `git diff --check`: aprobado (Git solo informó conversión de finales LF/CRLF).
+- Backend pendiente: el primer wrapper no pudo crear el lock en `%USERPROFILE%\\.gradle`; con la distribución/caché local en una ruta externa y `--offline --no-daemon`, Gradle terminó con `Could not connect to the Gradle daemon`. Por eso no se ejecutaron las pruebas backend ni `bootJar`.
+- PostgreSQL no estaba escuchando en 5433; WSL devolvió `Wsl/E_ACCESSDENIED` y Docker no pudo acceder a `dockerDesktopLinuxEngine`.
+- Chromium pendiente: el navegador integrado devolvió `net::ERR_CONNECTION_TIMED_OUT` al abrir el servidor local. Edge mostró interacción concurrente del usuario y no se navegó a la aplicación. No se obtuvieron capturas a 390×844 ni 1440×900 ni se comprobó el GET desde navegador. La API local ficticia se detuvo sin recibir consultas. Una tentativa posterior de preparar Edge headless quedó bloqueada: el sandbox denegó la apertura del mock API en `127.0.0.1:8080` y la solicitud de comprobación a Vite en `127.0.0.1:5173`; no se obtuvieron nuevas capturas.
+- Apertura desde correo recibido sigue pendiente de C-11/C-16; no se sustituyó por una apertura local.
+- **Recibos de ejecución:** `active-stack evidence-capture` no pudo finalizar la escritura del recibo redacted: falló al renombrar el archivo temporal a `output.redacted.txt` con `Access is denied`, incluso tras conceder escritura a su directorio de runs. Hay salidas redacted directas fuera del repositorio, pero no recibo Active Stack ni una repetición independiente; por el contrato de `evidence.md`, la proveniencia de los resultados queda **sin verificar**.
+
+### Estado OPSX
+
+La implementación y sus pruebas frontend están listas. Las tareas de backend/`bootJar` y Chromium quedan abiertas en [el change correctivo](../../c14-reapertura-enlace-misma-credencial/tasks.md); este seguimiento no se archiva hasta completar esas verificaciones en un entorno habilitado.
