@@ -2,9 +2,14 @@ package dev.odontologia.comunicaciones;
 
 import java.time.Clock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static dev.odontologia.comunicaciones.AutorizacionDespacho.Resultado.PERMANENTE;
 
 final class EmisionAviso {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmisionAviso.class);
+
     interface Transporte {
         AutorizacionDespacho.Resultado enviar(String destinatario, ComposicionAvisos.Aviso aviso);
     }
@@ -32,7 +37,16 @@ final class EmisionAviso {
         }
         String material = null;
         if (intento.credencial() != null) {
-            material = autorizacion.recuperarEnlace(intento.id()).orElse(null);
+            try {
+                material = autorizacion.recuperarEnlace(intento.id()).orElse(null);
+            } catch (IllegalStateException fallo) {
+                // C-04 expone este diagnóstico sin secretos para material irrecuperable.
+                if (!"Material de enlace no disponible".equals(fallo.getMessage())) {
+                    throw fallo;
+                }
+                LOGGER.warn("C-11 no pudo componer el aviso: material de enlace no disponible.");
+                return PERMANENTE;
+            }
         }
         if (material == null && !"CANCELADO".equals(intento.estado())) {
             return PERMANENTE;

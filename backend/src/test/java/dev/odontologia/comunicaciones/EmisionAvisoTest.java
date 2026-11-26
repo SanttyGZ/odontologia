@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static dev.odontologia.comunicaciones.AutorizacionDespacho.Resultado.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -36,11 +37,23 @@ class EmisionAvisoTest {
     void impideElEnvioFueraDelBuzonYCuandoFaltaElEnlaceRequerido() {
         var noAutorizado = intento("persona@example.test");
         var enlaceRevocado = intento(GmailPruebas.BUZON);
+        when(autorizacion.recuperarEnlace(enlaceRevocado.id())).thenReturn(Optional.empty());
         emision.procesar(noAutorizado);
         emision.procesar(enlaceRevocado);
         verifyNoInteractions(transporte);
         verify(autorizacion).registrar(noAutorizado.id(), PERMANENTE, ahora);
         verify(autorizacion).registrar(enlaceRevocado.id(), PERMANENTE, ahora);
+    }
+
+    @Test
+    void propagaFallosAjenosAlMaterialDeEnlace() {
+        var intento = intento(GmailPruebas.BUZON);
+        var fallo = new IllegalStateException("Fallo inesperado");
+        when(autorizacion.recuperarEnlace(intento.id())).thenThrow(fallo);
+
+        assertThatThrownBy(() -> emision.procesar(intento)).isSameAs(fallo);
+        verifyNoInteractions(transporte);
+        verify(autorizacion, never()).registrar(any(), any(), any());
     }
 
     private AutorizacionDespacho.Intento intento(String destinatario) {

@@ -3,27 +3,42 @@ package dev.odontologia;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import dev.odontologia.agenda.AgendaQueries;
 import dev.odontologia.agenda.AgendaWriteCoordinator;
 import dev.odontologia.comunicaciones.AutorizacionDespacho;
 import dev.odontologia.comunicaciones.PreparacionAvisos;
+import dev.odontologia.comunicaciones.SondeoAvisosFixture;
+import dev.odontologia.consultorio.ConsultorioQueries;
+import dev.odontologia.disponibilidad.AvailabilityDtos.FranjaInput;
+import dev.odontologia.disponibilidad.AvailabilityConfigurationService;
+import dev.odontologia.disponibilidad.PublicBookingDtos.ReservaInput;
+import dev.odontologia.disponibilidad.PublicBookingService;
 import dev.odontologia.gestion.AvisosRecuperacion;
 import dev.odontologia.gestion.CredencialesGestion;
+import dev.odontologia.pacientes.PacienteQueries;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import static dev.odontologia.CoreSchemaTest.START;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +46,72 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RecuperacionIntencionesTest {
     @TempDir Path directory;
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void elSondeoDistingueComposicionFallidaDeInterrupcionTrasSmtp(boolean interrumpirSmtp) throws Exception {
+        try (var db = new TestDatabase()) {
+            var fixture = CoreSchemaTest.fixture(db);
+            Path keys = claves();
+            var ahora = Instant.parse("2030-01-07T10:00:00Z");
+            var reloj = Clock.fixed(ahora, ZoneOffset.UTC);
+            try (var app = iniciar(db, keys)) {
+                var coordinador = app.getBean(AgendaWriteCoordinator.class);
+                var jdbc = app.getBean(JdbcTemplate.class);
+                app.getBean(AvailabilityConfigurationService.class)
+                        .replaceHorario(List.of(new FranjaInput(UUID.randomUUID(), 2,
+                                LocalTime.of(9, 0), LocalTime.of(12, 0), "ATENCION")));
+                var reservas = new PublicBookingService(jdbc, app.getBean(AgendaQueries.class),
+                        app.getBean(ConsultorioQueries.class), app.getBean(PacienteQueries.class),
+                        coordinador, app.getBean(CredencialesGestion.class), app.getBean(PreparacionAvisos.class), reloj);
+                var turno = reservas.reservar(new ReservaInput(fixture.motivo(), Instant.parse("2030-01-08T11:00:00Z"),
+                        "Ana", "Prueba", "grupo16desarrollosoftware3k10@gmail.com", "2615551234", "30123456"));
+                var fueraDeAlcance = keys.resolveSibling("clave-no-disponible.properties");
+                if (!interrumpirSmtp) {
+                    Files.move(keys, fueraDeAlcance);
+                }
+                var llamadas = new AtomicInteger();
+                var autorizacion = app.getBean(AutorizacionDespacho.class);
+                SondeoAvisosFixture.sondeo(db.jdbc, autorizacion, reloj, () -> {
+                    llamadas.incrementAndGet();
+                    return false;
+                }).run();
+                var primero = resultado(db, turno.turnoId());
+                if (!interrumpirSmtp) {
+                    Files.move(fueraDeAlcance, keys);
+                }
+                var despues = Clock.offset(reloj, Duration.ofMinutes(6));
+                SondeoAvisosFixture.sondeo(db.jdbc, autorizacion, despues, () -> {
+                    llamadas.incrementAndGet();
+                    return true;
+                }).run();
+                var segundo = resultado(db, turno.turnoId());
+                assertThat(primero.credencial()).isNotNull();
+                if (interrumpirSmtp) {
+                    assertThat(llamadas).hasValue(1);
+                    assertThat(primero.estado()).isNull();
+                    assertThat(primero.terminado()).isNull();
+                    assertThat(segundo.estado()).isEqualTo("INCIERTO");
+                    assertThat(segundo.terminado()).isEqualTo(despues.instant().atOffset(ZoneOffset.UTC));
+                } else {
+                    assertThat(llamadas).hasValue(0);
+                    assertThat(java.util.Arrays.asList(primero.estado(), segundo.estado()))
+                            .containsExactly("PERMANENTE", "PERMANENTE");
+                    assertThat(primero.terminado()).isEqualTo(ahora.atOffset(ZoneOffset.UTC));
+                    assertThat(segundo).isEqualTo(primero);
+                }
+            }
+        }
+    }
+
+    private record ResultadoSondeo(String estado, OffsetDateTime terminado, UUID credencial) {}
+
+    private static ResultadoSondeo resultado(TestDatabase db, UUID turno) {
+        return db.jdbc.queryForObject("""
+                SELECT resultado, terminado_en, credencial_id FROM intento_notificacion WHERE turno_id = ?
+                """, (rs, fila) -> new ResultadoSondeo(rs.getString("resultado"),
+                rs.getObject("terminado_en", OffsetDateTime.class), rs.getObject("credencial_id", UUID.class)), turno);
+    }
 
     @Test
     void reconstruyeDespuesDeReiniciarYConservaLaValidacionSinClave() throws Exception {
