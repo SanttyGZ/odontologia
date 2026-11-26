@@ -1,25 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient as defaultApiClient } from './api/apiClient';
 import type { ApiClient } from './api/apiClient';
+import { AgendaSection } from './components/AgendaSection';
 import { BloqueosSection } from './components/BloqueosSection';
 import { HorarioSection } from './components/HorarioSection';
 import { LoginForm } from './components/LoginForm';
 import { MotivosSection } from './components/MotivosSection';
 import { PublicBookingPage } from './components/PublicBookingPage';
 
-type SectionTab = 'motivos' | 'horario' | 'bloqueos';
+export type SectionTab = 'agenda' | 'motivos' | 'horario' | 'bloqueos';
 type AuthState = 'checking' | 'unauthenticated' | 'authenticated';
 
 interface AppProps {
   client?: ApiClient;
   initialPath?: string;
+  initialTab?: SectionTab;
 }
 
 function isPublicBookingPath(pathname: string): boolean {
   return pathname === '/reservar' || pathname.startsWith('/reservar/');
 }
 
-export function App({ client = defaultApiClient, initialPath }: AppProps) {
+export function App({ client = defaultApiClient, initialPath, initialTab }: AppProps) {
   const [currentPath, setCurrentPath] = useState<string>(
     () => initialPath ?? window.location.pathname,
   );
@@ -28,7 +30,7 @@ export function App({ client = defaultApiClient, initialPath }: AppProps) {
   );
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SectionTab>('motivos');
+  const [activeTab, setActiveTab] = useState<SectionTab>(initialTab ?? 'motivos');
   const [sectionBusy, setSectionBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -173,6 +175,18 @@ export function App({ client = defaultApiClient, initialPath }: AppProps) {
                   <button
                     type="button"
                     role="tab"
+                    id="tab-agenda"
+                    aria-selected={activeTab === 'agenda'}
+                    aria-controls="panel-agenda"
+                    className={activeTab === 'agenda' ? 'tab tab-active' : 'tab'}
+                    onClick={() => setActiveTab('agenda')}
+                    disabled={sectionBusy || loggingOut}
+                  >
+                    Agenda
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
                     id="tab-motivos"
                     aria-selected={activeTab === 'motivos'}
                     aria-controls="panel-motivos"
@@ -214,6 +228,9 @@ export function App({ client = defaultApiClient, initialPath }: AppProps) {
                   aria-labelledby={`tab-${activeTab}`}
                   className="panel"
                 >
+                  {activeTab === 'agenda' ? (
+                    <AgendaSection apiClient={client} onSessionExpired={handleSessionExpired} />
+                  ) : null}
                   {activeTab === 'motivos' ? (
                     <MotivosSection
                       apiClient={client}

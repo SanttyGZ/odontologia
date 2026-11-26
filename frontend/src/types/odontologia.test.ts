@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isAgendaResponse,
+  isAgendaTurnoResumen,
   isBloqueo,
   isBloqueoList,
   isCsrfResponse,
@@ -10,8 +12,10 @@ import {
   isHorarioResponse,
   isMotivo,
   isMotivoList,
+  isPacienteBasico,
   isReservaPublicaResponse,
   isSessionResponse,
+  isTurnoDetalleResponse,
   isValidDuration,
   toApiErrorCode,
 } from './odontologia';
@@ -116,5 +120,116 @@ describe('type guards de odontologia', () => {
     expect(isReservaPublicaResponse(reserva)).toBe(true);
     expect(isReservaPublicaResponse({ ...reserva, estado: 'OTRO' })).toBe(false);
     expect(isReservaPublicaResponse({ ...reserva, notificacionEstado: 'ACEPTADA_SMTP' })).toBe(false);
+  });
+
+  it('reconoce TURNO_NOT_FOUND y ACCESS_DENIED y valida AgendaTurnoResumen y AgendaResponse', () => {
+    expect(toApiErrorCode('TURNO_NOT_FOUND')).toBe('TURNO_NOT_FOUND');
+    expect(toApiErrorCode('ACCESS_DENIED')).toBe('ACCESS_DENIED');
+
+    const turnoConfirmado = {
+      id: '22222222-2222-2222-2222-222222222222',
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      motivoNombre: 'Limpieza',
+      inicio: '2026-11-25T12:00:00Z',
+      fin: '2026-11-25T12:30:00Z',
+      duracionReservadaMinutos: 30,
+      estado: 'CONFIRMADO',
+      pacienteNombre: 'Ana',
+      pacienteApellido: 'Perez',
+    };
+    const turnoCancelado = {
+      ...turnoConfirmado,
+      id: '33333333-3333-3333-3333-333333333333',
+      estado: 'CANCELADO',
+    };
+
+    expect(isAgendaTurnoResumen(turnoConfirmado)).toBe(true);
+    expect(isAgendaTurnoResumen(turnoCancelado)).toBe(true);
+    expect(isAgendaTurnoResumen({ ...turnoConfirmado, duracionReservadaMinutos: 0 })).toBe(false);
+    expect(isAgendaTurnoResumen({ ...turnoConfirmado, duracionReservadaMinutos: 30.5 })).toBe(false);
+    const { pacienteApellido: _omit, ...sinApellido } = turnoConfirmado;
+    expect(isAgendaTurnoResumen(sinApellido)).toBe(false);
+    expect(isAgendaTurnoResumen({ ...turnoConfirmado, estado: 'REPROGRAMADO' })).toBe(false);
+
+    expect(
+      isAgendaResponse({
+        vista: 'DIA',
+        desde: '2026-11-25',
+        hasta: '2026-11-25',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [],
+      }),
+    ).toBe(true);
+    expect(
+      isAgendaResponse({
+        vista: 'SEMANA',
+        desde: '2026-11-23',
+        hasta: '2026-11-29',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [turnoConfirmado, turnoCancelado],
+      }),
+    ).toBe(true);
+    expect(
+      isAgendaResponse({
+        vista: 'MES',
+        desde: '2026-11-01',
+        hasta: '2026-11-30',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [],
+      }),
+    ).toBe(false);
+    expect(
+      isAgendaResponse({
+        vista: 'DIA',
+        desde: '2026-02-30',
+        hasta: '2026-02-30',
+        zonaHoraria: 'America/Argentina/Mendoza',
+        turnos: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('valida PacienteBasico y TurnoDetalleResponse', () => {
+    const paciente = {
+      nombre: 'Ana',
+      apellido: 'Perez',
+      email: 'ana@example.com',
+      telefono: '2615551234',
+      dni: '30123456',
+    };
+    expect(isPacienteBasico(paciente)).toBe(true);
+    const { dni: _omitDni, ...sinDni } = paciente;
+    expect(isPacienteBasico(sinDni)).toBe(false);
+    expect(isPacienteBasico({ ...paciente, nombre: '' })).toBe(false);
+
+    const detalleConfirmadoRev0 = {
+      id: '22222222-2222-2222-2222-222222222222',
+      motivoId: '11111111-1111-1111-1111-111111111111',
+      motivoNombre: 'Limpieza',
+      inicio: '2030-01-08T12:00:00Z',
+      fin: '2030-01-08T12:30:00Z',
+      duracionReservadaMinutos: 30,
+      estado: 'CONFIRMADO',
+      revision: 0,
+      creadoEn: '2030-01-01T10:00:00Z',
+      canceladoEn: null,
+      paciente,
+    };
+    expect(isTurnoDetalleResponse(detalleConfirmadoRev0)).toBe(true);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, revision: 2 })).toBe(true);
+    expect(
+      isTurnoDetalleResponse({
+        ...detalleConfirmadoRev0,
+        estado: 'CANCELADO',
+        canceladoEn: '2030-01-08T10:00:00Z',
+      }),
+    ).toBe(true);
+
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, revision: -1 })).toBe(false);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, revision: 1.5 })).toBe(false);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, canceladoEn: 123 })).toBe(false);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, canceladoEn: '' })).toBe(false);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, paciente: sinDni })).toBe(false);
+    expect(isTurnoDetalleResponse({ ...detalleConfirmadoRev0, estado: 'REPROGRAMADO' })).toBe(false);
   });
 });

@@ -1,4 +1,6 @@
 import type {
+  AgendaQueryParams,
+  AgendaResponse,
   ApiErrorCode,
   ApiResult,
   Bloqueo,
@@ -12,8 +14,10 @@ import type {
   ReservaPublicaInput,
   ReservaPublicaResponse,
   SessionResponse,
+  TurnoDetalleResponse,
 } from '../types/odontologia';
 import {
+  isAgendaResponse,
   isBloqueo,
   isBloqueoList,
   isCsrfResponse,
@@ -24,6 +28,7 @@ import {
   isMotivoList,
   isReservaPublicaResponse,
   isSessionResponse,
+  isTurnoDetalleResponse,
   toApiErrorCode,
 } from '../types/odontologia';
 import { getErrorMessage } from '../utils/errors';
@@ -40,6 +45,8 @@ export interface ApiClient {
   getBloqueos: () => Promise<ApiResult<Bloqueo[]>>;
   createBloqueo: (input: BloqueoInput) => Promise<ApiResult<Bloqueo>>;
   deleteBloqueo: (bloqueoId: string) => Promise<ApiResult<void>>;
+  getAgenda: (params?: AgendaQueryParams) => Promise<ApiResult<AgendaResponse>>;
+  getTurnoDetalle: (turnoId: string) => Promise<ApiResult<TurnoDetalleResponse>>;
   getPublicMotivos: () => Promise<ApiResult<Motivo[]>>;
   getPublicDisponibilidad: (
     params: DisponibilidadPublicaParams,
@@ -277,6 +284,20 @@ export function createApiClient(fetchImpl: typeof fetch = fetch): ApiClient {
       mutateJson('POST', '/api/odontologo/bloqueos', input, isBloqueo),
     deleteBloqueo: (bloqueoId: string) =>
       mutateJson<void>('DELETE', `/api/odontologo/bloqueos/${encodeURIComponent(bloqueoId)}`, undefined, null),
+    getAgenda: (params?: AgendaQueryParams) => {
+      const search = new URLSearchParams();
+      if (params?.vista !== undefined) {
+        search.set('vista', params.vista);
+      }
+      if (typeof params?.fecha === 'string' && params.fecha.trim().length > 0) {
+        search.set('fecha', params.fecha.trim());
+      }
+      const query = search.toString();
+      const url = query.length > 0 ? `/api/odontologo/agenda?${query}` : '/api/odontologo/agenda';
+      return getJson(url, isAgendaResponse);
+    },
+    getTurnoDetalle: (turnoId: string) =>
+      getJson(`/api/odontologo/turnos/${encodeURIComponent(turnoId)}`, isTurnoDetalleResponse),
     getPublicMotivos: () => getJson('/api/public/motivos', isMotivoList),
     getPublicDisponibilidad: (params: DisponibilidadPublicaParams) => {
       const search = new URLSearchParams();
